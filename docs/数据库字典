@@ -1,0 +1,39 @@
+provisions 预收帐 
+=================
+  记录所有的provider的收支
+  ----------------------------
+    1. 收到用户充值
+        ```
+        In outstandingAccounts
+        {account:'user', subject:'recharge', amount:-n, time:Date, ref_id:bills._id, op_id:ObjectId}
+        {account:provider, subject:'receivable', amount:+n, time:Date, ref_id:bills._id, op_id:ObjectId}
+        ```
+    2. 对账完成
+        ```
+        {account:provider, subject:'receivable', amount:-m, time:Date, recon_id:recon._id, op_id:ObjectId}
+        {account:provider, subject:'balance', amount:+(m-c), time:Date, recon_id:recon._id, op_id:ObjectId}
+        {account:provider, subject:'commission', amount:+c, time:Date, recon_id:recon._id, op_id:ObjectId}
+        ```
+        In accounts
+        ```
+        for each recharge records
+        {account:'user', subject:'recharge', amount:-record.money, recon_id:recon._id, ref_id:record._id, op_id:ObjectId}
+        {account:record.merchant, subject:'balance', amount:record.money*record.share, recon_id:recon._id, ref_id:record._id, op_id:ObjectId}
+        {account:'system', subject:'commission', amount:record.money*(1-record.share), recon_id:recon._id, ref_id:record._id, op_id:ObjectId}
+
+        In daily_report
+        {date, account:provider, balance, recharge,commission}
+        {date, account:merchant, balance, recharge, commission}
+        ```
+
+    3. 取现
+        ```
+        In accounts
+        {account:merchant, subject:'balance', amount:-m, op_id:ObjectId, ref_id:orderId}
+        {account:'user', subject:'cash', amount:+m, op_id:ObjectId, ref_id:orderId}
+
+        In outstandingAccounts
+        {account:provider, subject:'balance', amount:-m, op_id:ObjectId, ref_id:orderId}
+        {account:'user', subject:'cash', amount:+m, op_id:ObjectId, ref_id:orderId}
+
+        ```

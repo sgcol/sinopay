@@ -1,0 +1,59 @@
+[bills]
+all payment order, logs
+
+备付金处理
+[ProvisionBalance]
+includes provisions, bank account, commission fee,
+balance condition (all provisions+bank accounts+commission fee) + user payments === 0
+when a bill confirmed {received money}
+	+user payment {received money}
+	-{provider} Receivables {received money}
+when {money, fee} confirmed by provider
+	+{provider} Receivables {money}
+	-{Commission} expense {fee}
+	-{provider} Account {money-fee}
+when merchant withdrawal {money} from provider， merchant account must be updated before this procedure, 
+	1. +{provider} Account {money}
+		 -{provider} Payable {money}
+	2. create withdrawal order
+	3. when withdrawal order confirmed {money, fee}
+	4. -{Commission} expense {fee}
+		 -{bank account} {money-fee}
+		 +{provider} Payable {money}
+//	5. +{merchant} payable {money}
+
+[merchantBalance]
+user payment === all merchant account + agents commissions+ system profit +commissions
+when a bill confirmed {received money}
+	1. get {agents commissions} from merchant data
+	+user payment {received money}
+	-{Commission} [...agents commissions]
+	-{Profit} system
+	-{merchant} Receivables {received money-commission}
+when {money, fee} confirmed by provider
+	+{Commission} system {fee}
+	-{Commission} expense {fee}
+	{merchant} Receivables countdown if there is a delay days exists
+when merchant refund {billid}
+	1. check whether if merchant account has enough balance
+	1. check whether if provision account has enough balance
+//	2. if not, select another provision account which commission is lowest
+//	3. no one qualified, return reject
+	4. +{merchant} Account {bill.money}
+	5. -{merchant} payable {bill.money}
+	6. when refund {money, fee} confirmed by provider
+	7. +{merchant} payable {money+fee}
+		 -{Commission} merchant_fee {fee}
+		 -{User} {money}
+when merchant disburse
+	1. check whether if the merchant accoint has enough balance
+	2. +{merchant} Account {money}
+	   -{merchant} Payable {money}
+	3. select a provider which balance is enough and transfer fee is lowest
+		 +{merchant} Payable {money}
+		 -{Provider} Payable {money}
+	4. create disburse order
+	5. {money, fee} when confirmed by provider
+		 +{Provider} Payable {money}
+		 -{merchant bank account} {money-fee}
+		 -{Commission} merchant_fee {fee}

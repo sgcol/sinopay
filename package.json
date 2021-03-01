@@ -6,10 +6,38 @@
     "@testing-library/jest-dom": "^5.11.9",
     "@testing-library/react": "^11.2.3",
     "@testing-library/user-event": "^12.6.2",
+    "alipay-sdk": "^3.1.5",
+    "clone": "^2.1.2",
+    "csv-parse": "^4.15.0",
+    "csv-parser": "^3.0.0",
+    "csv-stringify": "^5.6.1",
+    "debugout": "^1.0.0",
+    "dotenv": "^8.2.0",
+    "dotenv-expand": "^5.1.0",
+    "filter-object": "^3.0.0",
+    "fs-extra": "^9.1.0",
+    "fse": "^4.0.1",
+    "gy-easy-mongo": "^0.5.1",
+    "gy-module-loader": "^1.0.4",
+    "httpf": "0.0.9",
+    "ip6addr": "^0.2.3",
+    "jszip": "^3.5.0",
+    "md5": "^2.3.0",
+    "moment": "^2.29.1",
+    "neat-csv": "^6.0.1",
+    "node-fetch": "^2.6.1",
+    "nodejs-file-downloader": "^4.2.0",
+    "object-path": "^0.11.5",
+    "pem": "^1.14.4",
+    "promise-queue": "^2.2.5",
     "react": "^17.0.1",
     "react-dom": "^17.0.1",
     "react-scripts": "4.0.1",
-    "web-vitals": "^0.2.4"
+    "sort-object": "^3.0.3",
+    "web-vitals": "^0.2.4",
+    "xlsx": "^0.16.9",
+    "xml2js": "^0.4.23",
+    "yargs": "^16.2.0"
   },
   "scripts": {
     "start": "react-scripts start",
@@ -34,5 +62,13 @@
       "last 1 firefox version",
       "last 1 safari version"
     ]
+  },
+  "devDependencies": {
+    "@bb-tech/ra-treemenu": "^1.0.4",
+    "raw-loader": "^4.0.2",
+    "react-admin": "^3.11.3",
+    "react-markdown": "^5.0.3",
+    "react-syntax-highlighter": "^15.4.3",
+    "remark-gfm": "^1.0.0"
   }
 }
