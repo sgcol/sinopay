@@ -8,8 +8,7 @@ const url = require('url')
 , fse = require('fse')
 , getDB=require('../db.js')
 , {ObjectId} =require('mongodb')
-, confirmOrder =require('../order.js').confirmOrder
-, getOrderDetail=require('../order.js').getOrderDetail
+, {confirmOrder, updateOrder, getOrderDetail} =require('../order.js')
 , dec2num =require('../etc.js').dec2num
 , dedecaimal=require('../etc.js').dedecimal
 , sysevents=require('../sysevents.js')
@@ -165,6 +164,11 @@ async function start(cb) {
 	}
 
 	getReconciliation=async function(date) {
+		var beginOfDay=new Date(date), endOfDay=new Date(date);
+		beginOfDay.setHours(0, 0, 0, 0);
+		endOfDay.setHours(23, 59, 59, 999);
+		var count=await db.outstandingAccounts.find({time:{$gte:beginOfDay, $lte:endOfDay}}).count();
+		if (count==0) throw "没有新数据，无需对账";
 		var day=datestring(date)
 		var data={
 			method:'sandpay.trade.download',
@@ -177,12 +181,13 @@ async function start(cb) {
 		if (response.head.respCode!=='000000') throw response.head.respMsg;
 		const downloader = new Downloader({
 			url: response.body.content,//If the file name already exists, a new file with the name 200MB1.zip is created.     
-			directory: path.join(__dirname, "./reconciliation"),//This folder will be created, if it doesn't exist.   
+			directory: path.join(__dirname, "./reconciliation/sandpay"),//This folder will be created, if it doesn't exist.   
 			fileName:day+'.txt',
-			maxAttempts:3           
+			maxAttempts:3,
+			cloneFiles:false,           
 		})
 		await downloader.download();//Downloader.download() returns a promise.
-		var rs=fse.createReadStream(path.join(__dirname, "./reconciliation", day+'.txt'));
+		var rs=fse.createReadStream(path.join(__dirname, "./reconciliation/sandpay", day+'.txt'));
 		var [digest, ...bills]=await neatCsv(rs, {headers:false, separator:'|'});
 		var {'0':date, '2':count, '3':received, '8':commission}=digest;
 		bills.length--;
@@ -211,10 +216,12 @@ if (module===require.main) {
 	// order
 	setTimeout(async ()=>{
 		try {
-		console.log(await getReconciliation(new Date()))
-		console.log(await forwardOrder({
-			orderId:new ObjectId(),
+		console.log(await getReconciliation(new Date()));
+		var orderId=new ObjectId();
+		console.log(orderId, await forwardOrder({
+			orderId,
 			money:0.01,
+			type:'UNIONQRCODE',
 			_host:'http://127.0.0.1'
 		}))
 		}catch(e) {

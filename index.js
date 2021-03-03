@@ -15,6 +15,7 @@ const express =require('express')
 	.default('forecoreOnly', false)
 	.describe('host', 'bypass default host for testing alipay notification')
 	.argv
+, debugout=require('debugout')(argv.debugout)
 
 require('./financial_affairs');
 

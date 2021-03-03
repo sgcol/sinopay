@@ -3,6 +3,8 @@ const db_event=require('../dbwatcher')
     , {num2dec}=require('../etc')
     , ObjectId=require('mongodb').ObjectId
     , providerManager =require('../providerManager.js')
+    , argv =require('yargs').argv
+    , debugout=require('debugout')(argv.debugout)
 
 const noOrder={ordered:false};
 
@@ -11,12 +13,12 @@ const noOrder={ordered:false};
     db_event.when('bills', 'update', async (rec)=>{
         var {used, money, provider, paidmoney, _id, time, rec_id}=rec.fullDocument;
         if (used && rec_id==null) {
-            var session=db.startSession();
+            var session=db.mongoClient.startSession();
             try {
                 await session.withTransaction(async ()=>{
                     var now=time, rec_id=new ObjectId();
-                    var op1={account:'user', subject:'recharge', amount:paidmoney, time:now, ref_id:_id, op_id:rec_id}
-                        , op2={account:provider, amount:paidmoney, subject:'receivable', time:now, ref_id:_id, op_id:rec_id};
+                    var op1={account:'user', subject:'recharge', amount:num2dec(-paidmoney), time:now, ref_id:_id, op_id:rec_id}
+                        , op2={account:provider, amount:num2dec(paidmoney), subject:'receivable', time:now, ref_id:_id, op_id:rec_id};
                     op2.account=provider;
                     var chg_receivable={};
                     await db.outstandingAccounts.bulkWrite([
@@ -35,11 +37,44 @@ const noOrder={ordered:false};
             return true;
         }
     })
+    db_event.when('withdrawal', 'update', async (rec)=>{
+        var {used, money, merchantid, provider, money, _id, time, rec_id}=rec.fullDocument;
+
+        if (used && rec_id==null) {
+            var session=db.mongoClient.startSession();
+            try {
+                await session.withTransaction(async ()=>{
+                    var now=time, rec_id=new ObjectId();
+                    var op1={account:'user', subject:'withdrawal', amount:num2dec(money), time:now, ref_id:_id, op_id:rec_id}
+                        , op2={account:provider, amount:num2dec(-money), subject:'balance', time:now, ref_id:_id, op_id:rec_id}
+                        , op3={account:merchantid, amount:num2dec(-money), subject:'balance', time:now, ref_id:_id, op_id:rec_id}
+                    op2.account=provider;
+                    var chg_receivable={};
+                    await db.outstandingAccounts.bulkWrite([
+                        {insertOne:op1}, 
+                        {insertOne:op2},
+                    ], {...noOrder, session});
+                    await db.accounts.bulkWrite([
+                        {insertOne:op1},
+                        {insertOne:op3}
+                    ])
+                    await db.bills.updateOne({_id:_id}, {$set:{rec_id}}, {session});
+                }, {
+                    readPreference: 'primary',
+                    readConcern: { level: 'local' },
+                    writeConcern: { w: 'majority' }
+                });
+            } finally {
+                await session.endSession();
+            }
+            return true;
+        }
+    })
 })()
 
 async function reconciliation() {
     var {db}=getDB();
-    var from=end=new Date();
+    var from=new Date(), end=new Date();
     from.setDate(from.getDate()-1);
     from.setHours(0, 0, 0, 0);
     end.setDate(end.getDate()-1);
@@ -56,10 +91,10 @@ async function reconciliation() {
             for (const order in confirmedOrders) {
                 var {orderId} =order;
                 var {merchantid, provider, paidmoney, _id:ref_id, time, share} =await db.bills.findOne({_id:ObjectId(orderId)});
-                upds.push({insertOne:{account:'user', subject:'recharge', amount:-paidmoney, time, ref_id, recon_id}});
+                upds.push({insertOne:{account:'user', subject:'recharge', amount:num2dec(-paidmoney), time, ref_id, recon_id}});
                 var commission=Number((paidmoney*(1-share)).toFixed(2));
-                upds.push({insertOne:{account:merchantid, subject:'balance', amount:paidmoney-commission, time, ref_id, recon_id}});
-                upds.push({insertOne:{account:'commission', subject:'balance', amount:commission, time, ref_id, recon_id}});
+                upds.push({insertOne:{account:merchantid, subject:'balance', amount:num2dec(paidmoney-commission), time, ref_id, recon_id}});
+                upds.push({insertOne:{account:'commission', subject:'balance', amount:num2dec(commission), time, ref_id, recon_id}});
                 merchantIncoming[merchantid]=merchantIncoming[merchantid]||{recharge:0, commission:0};
                 merchantIncoming[merchantid].recharge+=paidmoney;
                 merchantIncoming[merchantid].commission+=commission;
@@ -79,10 +114,11 @@ async function reconciliation() {
         var now=new Date();
         for (const checked_item of checked) {
             var op_id=new ObjectId();
-            upds.push({insertOne:{account:checked_item.account, subject:'receivable', amount:-checked_item.received, time:now, ref_id:checked_item._id, op_id}});
-            upds.push({insertOne:{account:checked_item.account, subject:'balance', amount:checked_item.received, time:now, ref_id:checked_item._id, op_id}});
+            upds.push({insertOne:{account:checked_item.account, subject:'receivable', amount:num2dec(-checked_item.received), time:now, ref_id:checked_item._id, op_id}});
+            upds.push({insertOne:{account:checked_item.account, subject:'balance', amount:num2dec(checked_item.received-checked_item.commission), time:now, ref_id:checked_item._id, op_id}});
+            upds.push({insertOne:{account:'commission', subject:'balance', amount:num2dec(checked_item.commission), time:now, ref_id:checked_item._id, op_id}})
 
-            upds.push({updateMany:{filter:{account:checked_item.account, recon_id:null}, update:{$set:{recon_id:checked_item._id}}}})
+            // upds.push({updateMany:{filter:{account:checked_item.account, recon_id:null}, update:{$set:{recon_id:checked_item._id}}}})
         }
         db.outstandingAccounts.bulkWrite(upds, noOrder);
 
