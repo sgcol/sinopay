@@ -17,7 +17,7 @@
     "filter-object": "^3.0.0",
     "fs-extra": "^9.1.0",
     "fse": "^4.0.1",
-    "gy-easy-mongo": "^0.5.1",
+    "gy-easy-mongo": "^0.6.0",
     "gy-module-loader": "^1.0.4",
     "httpf": "0.0.9",
     "ip6addr": "^0.2.3",
