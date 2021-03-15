@@ -1,24 +1,18 @@
-import React, { Fragment } from "react";
-import {ButtonGroup, Button, IconButton, useMediaQuery, Chip} from '@material-ui/core';
+import React, {useState, useEffect} from "react";
+import {ButtonGroup, Button, Chip} from '@material-ui/core';
 import { 
-	List, TextField, BooleanField, NumberField, EditButton, ShowButton,
-	TextInput, BooleanInput, SelectInput,
+	List, TextField, NumberField,
+	TextInput, SelectInput,
 	Show, SimpleShowLayout,
-	Loading, Error,
-	useListContext, useNotify,
-	SaveButton, Toolbar,
-	FormDataConsumer,
+	useNotify, useDataProvider, 
 	Filter,
 	DateTimeInput,
 } from 'react-admin';
-import { useForm } from 'react-final-form';
 import {DateTimeField} from './extends/fields';
 import { useDispatch } from 'react-redux';
 import { refreshView } from 'ra-core';
 import {fetchApi} from './data-provider';
 import {ExtendedDatagrid} from './extends'
-
-const objPath =require('object-path')
 
 export const BillShow =props=> (
 	<Show {...props}>
@@ -32,11 +26,19 @@ export const BillShow =props=> (
 	</Show>
 )
 
-const QuickFilter = ({ label }) => {
-    return <Chip label={label} />;
-};
+// const QuickFilter = ({ label }) => {
+//     return <Chip label={label} />;
+// };
 
-const BillFilter =props=>(
+const BillFilter =props=>{
+	const dp=useDataProvider(), notify=useNotify();
+	var [merchants, setMerchants]=useState();
+	useEffect(()=>{
+		dp.getList('users', {filter:{acl:'merchant'}})
+		.then(({data})=>setMerchants(data))
+		.catch(e=>notify(e.message, 'warning'))
+	}, []);
+	return (
 	<Filter {...props}>
 		<TextInput label="订单id" source="id"/>
 		<TextInput label="商户订单" source="merchantOrderId" alwaysOn/>
@@ -50,12 +52,11 @@ const BillFilter =props=>(
 			{id:undefined, name:'全部'},
 		]} />
 		<TextInput label="供应商" source="provider"/>
-	</Filter>
-)
+	</Filter>)
+}
 
 const OptionButtons =({permissions, ...props})=>{
 	const {record}=props;
-	const {resource} =useListContext();
 	var dispatch = useDispatch();
 	const notify=useNotify();
 
@@ -74,24 +75,16 @@ const OptionButtons =({permissions, ...props})=>{
 	return (
 		<ButtonGroup variant="text" color="primary" aria-label="text primary button group">
 			<Button onClick={()=>{TakeAction('bills', {action:'notify', id:record.id})}}>notify</Button>
-			{permissions=='admin'?<Button onClick={()=>{TakeAction('bills', {action:'debugBill', id:record.id}).then(()=>{dispatch(refreshView())})}}>debug</Button>:null}
-			{permissions=='admin'?<Button onClick={()=>{TakeAction('bills', {action:'adminUseBill', id:record.id}).then(()=>{dispatch(refreshView())})}}>force</Button>:null}
+			{permissions==='admin'?<Button onClick={()=>{TakeAction('bills', {action:'debugBill', id:record.id}).then(()=>{dispatch(refreshView())})}}>debug</Button>:null}
+			{permissions==='admin'?<Button onClick={()=>{TakeAction('bills', {action:'adminUseBill', id:record.id}).then(()=>{dispatch(refreshView())})}}>force</Button>:null}
 			<Button onClick={()=>{TakeAction('bills', {action:'refund', id:record.id}).then(()=>{dispatch(refreshView())})}}>refund</Button>
 		</ButtonGroup>
 	)
 }
 
 export const BillList = ({permissions, ...props}) => {
-	const isSmall = useMediaQuery(theme => theme.breakpoints.down('sm'));
 	return (
 		<List {...props} filters={<BillFilter/>} exporter={false} title="充值订单" bulkActionButtons={false} sort={{ field: 'time', order: 'DESC' }}>
-			{/* {isSmall ? (
-				<SimpleList
-						primaryText={record => record.name}
-						secondaryText={record => record.acl}
-						tertiaryText={record => timestring(record.createTime)}
-				/>
-		) : ( */}
 			<ExtendedDatagrid footerResource="billsSummary">
 				<TextField source="id" footerText="Total"/>
 				<TextField source="merchantName" label="商户"/>
@@ -105,8 +98,8 @@ export const BillList = ({permissions, ...props}) => {
 				<TextField source="status" />
 				<OptionButtons permissions={permissions}/>
 			</ExtendedDatagrid>
-		{/* )} */}
-	</List>);
+		</List>
+	);
 }
 
 export default {

@@ -1,20 +1,21 @@
-import React, { useState, useEffect,useCallback } from "react";
-import { useMediaQuery } from '@material-ui/core';
+import React from "react";
 import { 
-	List, Datagrid, TextField, BooleanField, NumberField, EditButton, ShowButton,
-	Edit, Create, TabbedForm, FormTab, TextInput, BooleanInput, SelectInput,
-	Show, SimpleShowLayout,
-	Loading, Error,
-	useDataProvider,
-	TopToolbar, CreateButton, SaveButton, Toolbar,
-	FormDataConsumer
+	List, Datagrid, TextField, BooleanField, ArrayField, SingleFieldList
 } from 'react-admin';
+import {ChipField} from '../extends'
 
 export default props => (
 	<List {...props} exporter={false} title="供应商" bulkActionButtons={false}>
 		<Datagrid rowClick="expand">
 			<TextField source="name" />
-			<BooleanField source="forecore" />
+			<BooleanField source="forecore" label="四方"/>
+			<BooleanField source="withdrawal" label="支持提款"/>
+			<BooleanField source="reconciliation" label="支持对账"/>
+			<ArrayField source="supportedMethods" label="支付方式">
+				<SingleFieldList>
+					<ChipField />
+				</SingleFieldList>
+			</ArrayField>
 		</Datagrid>
 	</List>
 );

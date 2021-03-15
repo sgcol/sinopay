@@ -19,22 +19,13 @@ const url = require('url')
 , fetch=require('node-fetch')
 
 const clearfile_url='https://cashier.sandpay.com.cn/qr/api/clearfile/download', 
-	order_url='https://cashier.sandpay.com.cn/qr/api/order/create';
+	order_url='https://cashier.sandpay.com.cn/qr/api/order/create',
+	withdrawal_url='https://caspay.sandpay.com.cn/agent-main/openapi/agentpay'
 
 const _noop=function() {};
 
-var order=forwardOrder=getReconciliation=async function() {
-	throw '启动中';
-}
-exports.order=async function() {
-	return await order.apply(null, arguments);
-};
-exports.forwardOrder=async function () {
-	return await forwardOrder.apply(this, arguments);
-}
-exports.getReconciliation=async function () {
-	return await getReconciliation(this, arguments);
-}
+exports.order=async function () {throw 'not impl'}
+
 exports.bestSell=null;
 exports.getBalance=_noop;
 exports.sell=_noop;
@@ -43,7 +34,8 @@ exports.bestPair=(money, cb)=>{
 };
 exports.name='杉德支付';
 exports.router=router;
-exports.supportedMethods=['ALIPAYQRCODE', 'WECHATPAYQRCODE'];
+exports.supportedMethods=['UNIFIEDQRCODE'];
+exports.forecore=true;
 
 Number.prototype.pad = function(size) {
 	var s = String(this);
@@ -105,102 +97,137 @@ function makeRequest(params) {
 	}
 }
 
-const supportedType={WECHATPAYQRCODE:'0402', ALIPAYQRCODE:'0401', UNIONQRCODE:'0403'};
+const supportedType={WECHATPAYQRCODE:'0402', ALIPAYQRCODE:'0401', UNIFIEDQRCODE:'0403'};
 
-async function start(cb) {
-	var {db}= await getDB();
-	router.all('/return', (req, res)=>{
+router.all('/return', (req, res)=>{
+})
+router.all('/done', bodyParser.urlencoded(), (req, res) =>{
+	var {data, sign}=req.body;
+	try {
+		var payload=JSON.parse(data);
+	} catch(e) {
+		return res.end();
+	}
+	var {orderCode:orderid, buyerPayAmount:total_amount} =payload.body;
+	confirmOrder(orderid, total_amount, total_amount, (err)=>{
+		if (err && err!='used order') return res.end();
+		res.send('respCode=000000');
 	})
-	router.all('/done', bodyParser.urlencoded(), (req, res) =>{
-		var {data, sign}=req.body;
-		try {
-			var payload=JSON.parse(data);
-		} catch(e) {
-			return res.end();
-		}
-		var {orderCode:orderid, buyerPayAmount:total_amount} =payload.body;
-		confirmOrder(orderid, total_amount, total_amount, (err)=>{
-			if (err && err!='used order') return res.end();
-			res.send('respCode=000000');
-		})
-	});
-	forwardOrder =async function(params, callback) {
-		callback=callback||function(err, r) {
-			if (err) throw err;
-			return r;
-		}
-
-		try {
-			var warnings=[];
-			var payType=supportedType[params.type];
-			if (!payType) {
-				params.type='WECHATPAYQRCODE';
-				payType=supportedType.WECHATPAYQRCODE;
-				warnings.push(`type只能是${Object.keys(supportedType).join(' ')}，使用默认WECHATQRCODE`);
-			}
-			var data = {
-				method:'sandpay.trade.precreate',
-				payTool:payType,
-				orderCode : params.orderId,
-				totalAmount:(params.money*100).toString().padStart(12, '0'),
-				subject:params.desc||'Goods',
-				body:params.desc||'Goods',
-				notifyUrl : url.resolve(params._host, '../../pvd/sandpay/done'),
-			};            
-			var response =await fetch(order_url, {method:'POST', headers:{'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'}, body:querystring(makeRequest(data))});
-			response=JSON.parse(queryparse(decodeURIComponent(await response.text())).data);
-			if (response.head.respCode!=='000000') return callback(response.head.respMsg);
-			var data=response.body;
-			updateOrder(params.orderId, {status:'待支付', providerOrderId:data.orderCode, lasttime:new Date(), sandpay_ret:response});
-			// if (!account.used) account.used=1;
-			// else account.used++;
-			var ret={url:data.qrCode};
-			ret.pay_type=params.type;
-			if (warnings.length) ret.warnings=warnings;
-			return callback(null, ret);
-		}catch(e) {
-			return callback(e);
-		}
+});
+var forwardOrder =async function(params, callback) {
+	callback=callback||function(err, r) {
+		if (err) throw err;
+		return r;
 	}
 
-	getReconciliation=async function(date) {
-		var beginOfDay=new Date(date), endOfDay=new Date(date);
-		beginOfDay.setHours(0, 0, 0, 0);
-		endOfDay.setHours(23, 59, 59, 999);
-		var count=await db.outstandingAccounts.find({time:{$gte:beginOfDay, $lte:endOfDay}}).count();
-		if (count==0) throw "没有新数据，无需对账";
-		var day=datestring(date)
-		var data={
-			method:'sandpay.trade.download',
-			clearDate:day,
-			fileType:'1',
-			extend:''
+	try {
+		var warnings=[];
+		var payType=supportedType[params.type];
+		if (!payType) {
+			params.type='UNIFIEDQRCODE';
+			payType=supportedType.UNIFIEDQRCODE;
+			warnings.push(`type只能是${Object.keys(supportedType).join(' ')}，使用默认UNIFIEDQRCODE`);
 		}
-		var response =await fetch(clearfile_url, {method:'POST', headers:{'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'}, body:querystring(makeRequest(data))});
+		var data = {
+			method:'sandpay.trade.precreate',
+			payTool:payType,
+			orderCode : params.orderId,
+			totalAmount:(params.money*100).toString().padStart(12, '0'),
+			subject:params.desc||'Goods',
+			body:params.desc||'Goods',
+			notifyUrl : url.resolve(params._host, '../../pvd/sandpay/done'),
+		};            
+		var response =await fetch(order_url, {method:'POST', headers:{'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'}, body:querystring(makeRequest(data))});
 		response=JSON.parse(queryparse(decodeURIComponent(await response.text())).data);
-		if (response.head.respCode!=='000000') throw response.head.respMsg;
-		const downloader = new Downloader({
-			url: response.body.content,//If the file name already exists, a new file with the name 200MB1.zip is created.     
-			directory: path.join(__dirname, "./reconciliation/sandpay"),//This folder will be created, if it doesn't exist.   
-			fileName:day+'.txt',
-			maxAttempts:3,
-			cloneFiles:false,           
-		})
-		await downloader.download();//Downloader.download() returns a promise.
-		var rs=fse.createReadStream(path.join(__dirname, "./reconciliation/sandpay", day+'.txt'));
-		var [digest, ...bills]=await neatCsv(rs, {headers:false, separator:'|'});
-		var {'0':date, '2':count, '3':received, '8':commission}=digest;
-		bills.length--;
-		return {date, count, received, commission, confirmedOrders:bills.map(({'2':orderId, '3':money})=>({orderId, money})), recon_tag:day};
+		if (response.head.respCode!=='000000') return callback(response.head.respMsg);
+		var data=response.body;
+		updateOrder(params.orderId, {status:'待支付', providerOrderId:data.orderCode, lasttime:new Date(), sandpay_ret:response});
+		// if (!account.used) account.used=1;
+		// else account.used++;
+		var ret={url:data.qrCode};
+		ret.pay_type=params.type;
+		if (warnings.length) ret.warnings=warnings;
+		return callback(null, ret);
+	}catch(e) {
+		return callback(e);
 	}
 }
 
-try {
-	start();
-} catch(e) {
-	console.error('启动sandpay失败', e);
+var getReconciliation=async function(from, date, forceRecon) {
+	// var beginOfDay=new Date(date), endOfDay=new Date(date);
+	// beginOfDay.setHours(0, 0, 0, 0);
+	// endOfDay.setHours(23, 59, 59, 999);
+	// var count=await db.outstandingAccounts.find({time:{$gte:beginOfDay, $lte:endOfDay}}).count();
+	// if (count==0) throw "没有新数据，无需对账";
+	var day=datestring(date), specFileName=path.join(__dirname, "./reconciliation/sandpay", day+'.txt');
+	if (!forceRecon) {
+		var now=new Date();
+		if (date.getDate()>(now.getDate()-1)) throw 'reconciltation file not ready yet';
+		if (now.getHours()<=9) throw 'reconciltation file not ready yet';
+		try {
+			await fse.access(specFileName);
+			throw 'reconciliation has been done';
+		} catch(e) {
+		}
+	}
+	var data={
+		method:'sandpay.trade.download',
+		clearDate:day,
+		fileType:'1',
+		extend:''
+	}
+	var response =await fetch(clearfile_url, {method:'POST', headers:{'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'}, body:querystring(makeRequest(data))});
+	response=JSON.parse(queryparse(decodeURIComponent(await response.text())).data);
+	if (response.head.respCode!=='000000') throw response.head.respMsg;
+	const downloader = new Downloader({
+		url: response.body.content,//If the file name already exists, a new file with the name 200MB1.zip is created.     
+		directory: path.join(__dirname, "./reconciliation/sandpay"),//This folder will be created, if it doesn't exist.   
+		fileName:day+'.txt',
+		maxAttempts:3,
+		cloneFiles:false,           
+	})
+	await downloader.download();//Downloader.download() returns a promise.
+	var rs=fse.createReadStream(specFileName);
+	var [digest, ...bills]=await neatCsv(rs, {headers:false, separator:'|'});
+	if (!digest && !bills) throw 'it seems reconciliation file was not ready';
+	var {'0':date, '2':count, '3':received, '8':commission}=digest;
+	if ((date==null) || (count==null) || (received==null) || (commission==null)) throw 'it seems reconciliation file was not ready'; 
+	if (bills && bills.length) bills.length--;
+	return {date, count, received, commission, confirmedOrders:bills.map(({'2':orderId, '3':money})=>({orderId, money})), recon_tag:day};
 }
 
+const aesEncrypt=(data, key)=>{
+	const algorithm = 'aes-128-ecb';   
+    const cipher = crypto.createCipheriv(algorithm, key, null);
+    cipher.setAutoPadding(true);
+    let encrypted = cipher.update(data, 'utf8', 'base64');
+    encrypted += cipher.final('base64');
+    return encrypted
+}
+
+const encryptWithPublicKey = function(toEncrypt) {
+  
+  var publicKey = fse.readFileSync(path.join(__dirname, 'sand.pem'));
+  
+  var buffer = Buffer.from(toEncrypt, 'utf8');
+  var encrypted = crypto.publicEncrypt({key:publicKey, padding : crypto.constants.RSA_PKCS1_PADDING}, buffer)
+  return  encrypted.toString("base64");
+  
+}
+exports.forwardOrder=forwardOrder;
+exports.getReconciliation=getReconciliation;
+exports.withdrawal =async function withdrawal(orderId, account, money) {
+	var data = {
+		method:'sandpay.trade.precreate',
+		productId:'00000004',
+		payTool:payType,
+		orderCode : params.orderId,
+		totalAmount:(params.money*100).toString().padStart(12, '0'),
+		subject:params.desc||'Goods',
+		body:params.desc||'Goods',
+		notifyUrl : url.resolve(params._host, '../../pvd/sandpay/done'),
+	};            
+}
 if (module===require.main) {
 	// debug neat-csv
 	(async function readRecon(){
@@ -216,7 +243,9 @@ if (module===require.main) {
 	// order
 	setTimeout(async ()=>{
 		try {
-		console.log(await getReconciliation(new Date()));
+		var date=new Date();
+		date.setDate(date.getDate()-1);
+		console.log(await getReconciliation(date, date));
 		var orderId=new ObjectId();
 		console.log(orderId, await forwardOrder({
 			orderId,

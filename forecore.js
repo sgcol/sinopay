@@ -96,7 +96,7 @@ function start(err, db) {
 					,{w:1})
 			])
 			db.bills.updateOne({_id:orderId}, {$set:{providerOrderId:ret.providerOrderId, status:'forward'}});
-			Object.assign(ret ,{outOrderId:outOrderId, orderId:orderId.toHexString()});
+			Object.assign(ret ,{outOrderId:outOrderId, orderId:orderId.toHexString(), providerOrderId:ret.providerOrderId});
 			return callback(null, mchSign(merchant, ret));
 		}catch(e) {
 			return callback(e)

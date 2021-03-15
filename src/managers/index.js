@@ -1,8 +1,8 @@
 import React, {Fragment } from "react";
 import { Route } from 'react-router';
-import { Drawer, useMediaQuery } from '@material-ui/core';
+import { Drawer } from '@material-ui/core';
 import { 
-	List, Datagrid, TextField, BooleanField, EditButton,
+	List, Datagrid, TextField, EditButton,
     TopToolbar, CreateButton,
 } from 'react-admin';
 import {DateTimeField} from '../extends/fields';

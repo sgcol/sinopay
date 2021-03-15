@@ -48,7 +48,7 @@ module.exports={
 		var cur=db.bills.find(filter);
 		if (sort) {
 			var so={};
-			so[sort]=(order=='asc'?1:-1);
+			so[sort]=(order=='ASC'?1:-1);
 			cur=cur.sort(so);
 		}
 		if (offset) cur=cur.skip(Number(offset));

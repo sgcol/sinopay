@@ -1,9 +1,8 @@
 import React from 'react'
 import { 
-	Show, SimpleShowLayout, TextField, TitleForRecord
+	TitleForRecord
 } from 'react-admin';
 import Card from '@material-ui/core/Card';
-import classnames from 'classnames'
 import ReactMarkdown  from 'react-markdown'
 import gfm from 'remark-gfm'
 import {Prism as SyntaxHighlighter} from 'react-syntax-highlighter'

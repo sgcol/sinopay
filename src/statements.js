@@ -2,12 +2,8 @@ import React from "react";
 import { Card as MuiCard, CardContent, withStyles } from '@material-ui/core';
 import AccessTimeIcon from '@material-ui/icons/AccessTime';
 import {
-	List, TextField, NumberField, DateField,
-	useDataProvider,
-	SaveButton, Toolbar,
-	FormDataConsumer,
-	Filter, FilterList, FilterListItem,
-	DateTimeInput,
+	List, TextField, NumberField, DateField, ReferenceField,
+    FilterList, FilterListItem,
 } from 'react-admin';
 import {ExtendedDatagrid} from './extends'
 
@@ -57,12 +53,15 @@ const FilterSidebar = () => (
 );
 export const StatementsList = ({permissions, ...props}) => {
 	return (
-		<List {...props} aside={<FilterSidebar/>} title="报表" bulkActionButtons={false} sort={{ field: 'time', order: 'DESC' }}>
-			<ExtendedDatagrid footerResource="billsSummary">
+		<List {...props} title="报表" bulkActionButtons={false} sort={{ field: 'time', order: 'DESC' }}>
+			<ExtendedDatagrid footerResource="statementsSummary">
 				<DateField source="time" footerText="Total" />
-				<TextField source="merchantName" label="商户" />
-				<TextField source="provider" label="供应商"/>
-				<NumberField source="money" footerSource="money"/>
+                <ReferenceField label="商户" source="account" reference="users">
+				    <TextField source="name" />
+                </ReferenceField>
+				<NumberField source="balance" label="收入" options={{ maximumFractionDigits: 2 }} footerSource="balance"/>
+				<NumberField source="commission" label="手续费" footerSource="money" options={{ maximumFractionDigits: 2 }} footerSource="commission"/>
+                <NumberField source="count" label="交易笔数" footerSource="money" options={{ maximumFractionDigits: 0 }}/>
 			</ExtendedDatagrid>
 		</List>
 	);

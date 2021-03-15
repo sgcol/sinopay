@@ -4,8 +4,6 @@ import {
     Children,
     cloneElement,
     useCallback,
-    FC,
-    ReactElement,
 } from 'react';
 // import PropTypes from 'prop-types';
 import {
@@ -13,8 +11,6 @@ import {
     useListContext,
     useVersion,
     useDataProvider,
-    Identifier,
-    Record,
     DatagridLoading, DatagridBody, DatagridHeaderCell, useDatagridStyles
 } from 'react-admin';
 import {
@@ -30,7 +26,6 @@ import classnames from 'classnames';
 export const Datagrid = React.forwardRef((props, ref) => {
     const classes = useDatagridStyles(props);
     const {
-        optimized = false,
         body = <DatagridBody />,
         children,
         classes: classesOverride,
@@ -131,9 +126,9 @@ export const Datagrid = React.forwardRef((props, ref) => {
      * displaying the table header with zero data rows,
      * the datagrid displays nothing in this case.
      */
-    if (loaded && (ids.length === 0 || total === 0)) {
-        return null;
-    }
+    // if (loaded && (ids.length === 0 || total === 0)) {
+    //     return null;
+    // }
 
     const all = isRowSelectable
         ? ids.filter(id => isRowSelectable(data[id]))
@@ -142,6 +137,7 @@ export const Datagrid = React.forwardRef((props, ref) => {
     const shown = (()=>{
         if (ids[0]==null) return children;
         var sample=data[ids[0]];
+        for (var i=1; i<ids.length; i++) sample={...sample, ...data[ids[i]]};
         return Children.toArray(children).filter(field=>sample.hasOwnProperty(field.props.source));
     })();
 

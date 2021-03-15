@@ -1,69 +1,78 @@
-const {objectId}=require('./dataDrivers.js')
+const {ObjectId} =require('mongodb')
 	, {aclgte}=require('../auth')
 	, getDB =require('../db.js')
 	, {notifyMerchant}=require('../order.js')
 	, {dedecimal, isValidNumber} =require('../etc.js')
+	, argv=require('yargs').argv
+	, debugout=require('debugout')(argv.debugout)
 
 module.exports={
 	list:async (params, role, req)=>{
-		var {filter, sort, order, offset, limit} =params;
-		if (filter) {
-			try {
-				var filters=filter=JSON.parse(filter)
-				for (const key in filters) {
-					var value=filters[key];
-					if (Array.isArray(value)) filter[key]={$in:value};
-				}
-				if (filters._id) {
-					if (Array.isArray(filters._id)) {
-						filters._id={$in:value.map(idChanger)}
-					}
-					else filters._id=idChanger(value);                        
-				} else {
-					filters._id={$ne:'btf_lock'}
-				}
-				// if (filters.allrec) {
-				// 	delete filters.allrec;
-				// 	delete filters.used;
-				// }
-				if (filters.period) {
-					
-					delete filters.period;
-				}
-				if (filters.startTime) {
-					filters.time={'$gte':new Date(filters.startTime)}
-					delete filters.startTime;
-				}
-				if (filters.endTime) {
-					if (filters.time) filters.time['$lte']=new Date(filters.endTime);
-					else filters.time={'$lte':new Date(filters.endTime)}
-					delete filters.endTime;
-				}
-			} catch(e) {
-				filter={_id:{$ne:'btf_lock'}}
+		var {filter={}, sort, order, offset, limit} =params;
+		try {
+			var filters=filter=JSON.parse(filter)
+			if (filters.period) {
+				delete filters.period;
 			}
+			if (filters.startTime) {
+				filters.time={'$gte':new Date(filters.startTime)}
+				delete filters.startTime;
+			}
+			if (filters.endTime) {
+				if (filters.time) filters.time['$lte']=new Date(filters.endTime);
+				else filters.time={'$lte':new Date(filters.endTime)}
+				delete filters.endTime;
+			}
+		} catch(e) {
+		} finally {
+			if (!filter.account) filter.account={$ne:'user'}
 		}
-		const {db}=await getDB();
 		if (!aclgte(role, 'manager')) {
-			filter.userid=req.auth._id;
+			filter.account=req.auth._id;
 		}
 
-		var cur=db.bills.find(filter);
+		var groupby={dot:'$dot', account:'$account', currency:'$currency'}, af={dot:{$dateToString:{date:'$time', format:'%Y-%m-%d'}}};
+
+		const {db}=await getDB();
+
+		var stage=[
+			{$match:filter},
+			{$addFields:af},
+			{$group:{_id:groupby, balance:{$sum:'$balance'}, commission:{$sum:'commission'}, count:{$sum:1}}}
+		];
 		if (sort) {
 			var so={};
 			so[sort]=(order=='asc'?1:-1);
+			stage.push({$sort:so});
+		}
+		stage=stage.concat([
+			{$project:{
+				doc:{
+					_id:ObjectId(),
+					time:'$_id.dot',
+					account:'$_id.account',
+					currency:'$_id.currency',
+					balance:'$balance',
+					commission:'$commission',
+					count:'$count',
+				}
+			}},
+			{$group:{_id:null, total:{$sum:1}, rows:{$push:'$doc'}}},
+		])
+
+		var cur=db.accounts.aggregate(stage);
+		if (sort) {
+			var so={};
+			so[sort]=(order=='ASC'?1:-1);
 			cur=cur.sort(so);
 		}
+
 		if (offset) cur=cur.skip(Number(offset));
 		if (limit) cur=cur.limit(Number(limit));
-		var [rows, total]=await Promise.all([
-			cur.toArray(),
-			cur.count(),
-			// db.bills.aggregate([
-			// 	{$match:key},
-			// 	{$group:{_id:null, totalMoney:{$sum:'$paidmoney'}, net:{$sum:'$net'}}}
-			// ]).toArray()
-		]);
-		return {rows:dedecimal(rows), total};
+		var [ret]=await cur.toArray();
+		dedecimal(ret.rows);
+		var idx=0;
+		ret.rows.forEach((item)=>item._id=idx++);
+		return ret;
 	}
 }

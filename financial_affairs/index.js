@@ -1,1 +1,1 @@
-require('./basic.js')
+module.exports=require('./basic.js');

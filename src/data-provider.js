@@ -37,7 +37,7 @@ import { HttpError } from 'react-admin';
 
 function _id2id(arr) {
     arr.forEach((item)=>{
-        if (item._id) {
+        if (item._id!=null) {
             item.id=encodeURIComponent(item._id);
             item._id=undefined;
         }
@@ -45,7 +45,7 @@ function _id2id(arr) {
     return arr;
 }
 function id2_id(obj) {
-    if (obj.id) {
+    if (obj.id!=null) {
         obj._id=decodeURIComponent(obj.id);
         obj.id=undefined;
     }
@@ -78,7 +78,7 @@ function mapResource(name) {
 
 var baseUrl;
 export const fetchApi=(url, options) =>{
-    if (url[0]=='/') var uri=`${baseUrl}${url}`;
+    if (url[0]==='/') var uri=`${baseUrl}${url}`;
     else uri=`${baseUrl}/${url}`;
     return myFetchJson(uri, options);
 };
@@ -153,6 +153,7 @@ export default (apiUrl, httpClient = myFetchJson) => {
             return httpClient(`${apiUrl}/${mapResource(resource)}?${stringify({filter:JSON.stringify(id2_id(params))})}`).then(({ json }) => {
                 if (json.err) throw new HttpError(json.err, 500, json);
                 var data=json.rows[0];
+                if (!data) return {data:null};
                 data.id=data._id;
                 data._id=undefined;
                 return {data};
@@ -255,9 +256,14 @@ export default (apiUrl, httpClient = myFetchJson) => {
             })
         },
         actions: (resource, params) =>{
-            return httpClient(`${apiUrl}/${mapResource(resource)}/${params.action}`, {
+            var _id=undefined;
+            if (params.id) {
+                _id=decodeURIComponent(params.id);
+                params.id=undefined;
+            }
+            return httpClient(`${apiUrl}/${mapResource(resource)}/${params.method}`, {
                 method:'POST',
-                body:JSON.stringify({_id:decodeURIComponent(params.id)})
+                body:JSON.stringify({_id, ...params})
             }).then(({json})=>{
                 return {data:json};
             })

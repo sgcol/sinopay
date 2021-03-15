@@ -5,7 +5,8 @@ module.exports={
 		var allp=providers.getProvider();
 		var all=[];
 		for (var prd in allp) {
-			all.push({_id:prd, ...allp[prd]})
+			var p=allp[prd];
+			all.push({_id:prd, ...p, forecore:!!p.forwardOrder, reconciliation:!!p.getReconciliation, withdrawal:!!p.withdrawal})
 		}
 		return {
 			rows:all,

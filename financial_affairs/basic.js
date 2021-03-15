@@ -1,128 +1,164 @@
 const db_event=require('../dbwatcher')
-    , getDB=require('../db')
-    , {num2dec}=require('../etc')
-    , ObjectId=require('mongodb').ObjectId
-    , providerManager =require('../providerManager.js')
-    , argv =require('yargs').argv
-    , debugout=require('debugout')(argv.debugout)
+	, getDB=require('../db')
+	, {num2dec}=require('../etc')
+	, ObjectId=require('mongodb').ObjectId
+	, providerManager =require('../providers')
+	, argv =require('yargs').argv
+	, debugout=require('debugout')(argv.debugout)
 
 const noOrder={ordered:false};
 
 (async function order_received() {
-    var {db}=await getDB();
-    db_event.when('bills', 'update', async (rec)=>{
-        var {used, money, provider, paidmoney, _id, time, rec_id}=rec.fullDocument;
-        if (used && rec_id==null) {
-            var session=db.mongoClient.startSession();
-            try {
-                await session.withTransaction(async ()=>{
-                    var now=time, rec_id=new ObjectId();
-                    var op1={account:'user', subject:'recharge', amount:num2dec(-paidmoney), time:now, ref_id:_id, op_id:rec_id}
-                        , op2={account:provider, amount:num2dec(paidmoney), subject:'receivable', time:now, ref_id:_id, op_id:rec_id};
-                    op2.account=provider;
-                    var chg_receivable={};
-                    await db.outstandingAccounts.bulkWrite([
-                        {insertOne:op1}, 
-                        {insertOne:op2},
-                    ], {...noOrder, session});
-                    await db.bills.updateOne({_id:_id}, {$set:{rec_id}}, {session});
-                }, {
-                    readPreference: 'primary',
-                    readConcern: { level: 'local' },
-                    writeConcern: { w: 'majority' }
-                });
-            } finally {
-                await session.endSession();
-            }
-            return true;
-        }
-    })
-    db_event.when('withdrawal', 'update', async (rec)=>{
-        var {used, money, merchantid, provider, money, _id, time, rec_id}=rec.fullDocument;
+	var {db}=await getDB();
+	db_event.when('bills', 'update', async (rec)=>{
+		var {used, money, provider, paidmoney, _id, time, rec_id}=rec.fullDocument;
+		if (used && rec_id==null) {
+			var session=db.mongoClient.startSession();
+			try {
+				await session.withTransaction(async ()=>{
+					var now=time, rec_id=new ObjectId();
+					var op2={account:provider, receivable:num2dec(paidmoney), recharge:num2dec(-paidmoney), time:now, ref_id:_id, op_id:rec_id};
+					await db.outstandingAccounts.insertOne(op2,{session});
+					await db.bills.updateOne({_id:_id}, {$set:{rec_id}}, {session});
+				}, {
+					readPreference: 'primary',
+					readConcern: { level: 'local' },
+					writeConcern: { w: 'majority' }
+				});
+			} finally {
+				await session.endSession();
+			}
+			return true;
+		}
+	})
+	db_event.when('withdrawal', 'update', async (rec)=>{
+		var {money, merchantid, provider, money, _id, time, rec_id}=rec.fullDocument;
 
-        if (used && rec_id==null) {
-            var session=db.mongoClient.startSession();
-            try {
-                await session.withTransaction(async ()=>{
-                    var now=time, rec_id=new ObjectId();
-                    var op1={account:'user', subject:'withdrawal', amount:num2dec(money), time:now, ref_id:_id, op_id:rec_id}
-                        , op2={account:provider, amount:num2dec(-money), subject:'balance', time:now, ref_id:_id, op_id:rec_id}
-                        , op3={account:merchantid, amount:num2dec(-money), subject:'balance', time:now, ref_id:_id, op_id:rec_id}
-                    op2.account=provider;
-                    var chg_receivable={};
-                    await db.outstandingAccounts.bulkWrite([
-                        {insertOne:op1}, 
-                        {insertOne:op2},
-                    ], {...noOrder, session});
-                    await db.accounts.bulkWrite([
-                        {insertOne:op1},
-                        {insertOne:op3}
-                    ])
-                    await db.bills.updateOne({_id:_id}, {$set:{rec_id}}, {session});
-                }, {
-                    readPreference: 'primary',
-                    readConcern: { level: 'local' },
-                    writeConcern: { w: 'majority' }
-                });
-            } finally {
-                await session.endSession();
-            }
-            return true;
-        }
-    })
+		if (rec_id==null) {
+			var session=db.mongoClient.startSession();
+			try {
+				await session.withTransaction(async ()=>{
+					var now=time, rec_id=new ObjectId();
+					var op1={account:provider, balance:num2dec(-money), payable:num2dec(money), time:now, ref_id:_id, op_id:rec_id}
+						, op3={account:merchantid, balance:num2dec(-money), payable:num2dec(money), time:now, ref_id:_id, op_id:rec_id}
+					op2.account=provider;
+					var chg_receivable={};
+					await db.outstandingAccounts.insertOne(op1, {session});
+					await db.accounts.insertOne(op3,{session});
+					await db.withdrawal.updateOne({_id:_id}, {$set:{rec_id}}, {session});
+				}, {
+					readPreference: 'primary',
+					readConcern: { level: 'local' },
+					writeConcern: { w: 'majority' }
+				});
+			} finally {
+				await session.endSession();
+			}
+			return true;
+		}
+	})
 })()
 
-async function reconciliation() {
-    var {db}=getDB();
-    var from=new Date(), end=new Date();
-    from.setDate(from.getDate()-1);
-    from.setHours(0, 0, 0, 0);
-    end.setDate(end.getDate()-1);
-    end.setHours(23, 59, 59, 999);
-    // var allProvidersNeedsCheck=await db.outstandingAccounts.aggregate({$match:{time:{$gte:from, $lte:end}, subject:'receivable'}}, {$group:{_id:'$account', receivable:{$sum:'$amount'}}}).toArray();
-    var allProviders=providerManager.getProvider(), checklist=[], checked=[], merchantIncoming={};
-    for (const providerName in allProviders) {
-        checklist.push(async ()=>{
-            // balance
-            var {received, commission, confirmedOrders, recon_tag}=await providerManager.getProvider(provider).getReconciliation(from,end)
-            var recon_id=new ObjectId();
-            checked.push({_id:recon_id, account:providerName, received, commission, recon_tag, time:end});
-            var upds=[];
-            for (const order in confirmedOrders) {
-                var {orderId} =order;
-                var {merchantid, provider, paidmoney, _id:ref_id, time, share} =await db.bills.findOne({_id:ObjectId(orderId)});
-                upds.push({insertOne:{account:'user', subject:'recharge', amount:num2dec(-paidmoney), time, ref_id, recon_id}});
-                var commission=Number((paidmoney*(1-share)).toFixed(2));
-                upds.push({insertOne:{account:merchantid, subject:'balance', amount:num2dec(paidmoney-commission), time, ref_id, recon_id}});
-                upds.push({insertOne:{account:'commission', subject:'balance', amount:num2dec(commission), time, ref_id, recon_id}});
-                merchantIncoming[merchantid]=merchantIncoming[merchantid]||{recharge:0, commission:0};
-                merchantIncoming[merchantid].recharge+=paidmoney;
-                merchantIncoming[merchantid].commission+=commission;
-            }
-            db.accounts.bulkWrite(upds, noOrder);
-        });
-    }
-    if (checklist.length) {
-        await Promise.all(checklist);
-        db.statements.insertMany(checked, noOrder);
-        var ops=[];
-        for (const merchantid in merchantIncoming) {
-            ops.push({account:merchantid, ...merchantIncoming[merchantid], time:end})
-        }
-        db.statements.insertMany(ops, noOrder);
-        var upds=[];
-        var now=new Date();
-        for (const checked_item of checked) {
-            var op_id=new ObjectId();
-            upds.push({insertOne:{account:checked_item.account, subject:'receivable', amount:num2dec(-checked_item.received), time:now, ref_id:checked_item._id, op_id}});
-            upds.push({insertOne:{account:checked_item.account, subject:'balance', amount:num2dec(checked_item.received-checked_item.commission), time:now, ref_id:checked_item._id, op_id}});
-            upds.push({insertOne:{account:'commission', subject:'balance', amount:num2dec(checked_item.commission), time:now, ref_id:checked_item._id, op_id}})
+async function reconciliation(date, providerName) {
+	var {db}=await getDB();
+	var forceRecon=false, from, end;
+	if (date) {
+		forceRecon=true;
+		from=new Date(date);
+		end=new Date(date);
+	} else {
+		from=new Date();
+		end=new Date();
+		from.setDate(from.getDate()-1);
+		end.setDate(end.getDate()-1);
+	}
+	from.setHours(0, 0, 0, 0);
+	end.setHours(23, 59, 59, 999);
+	// var allProvidersNeedsCheck=await db.outstandingAccounts.aggregate({$match:{time:{$gte:from, $lte:end}, subject:'receivable'}}, {$group:{_id:'$account', receivable:{$sum:'$amount'}}}).toArray();
+	var allProviders=providerName?
+		(()=>{var ret={}; ret[providerName]=providerManager.getProvider(providerName); return ret})()
+		:providerManager.getProvider()
+		, checklist=[]
+		, checked=[];//, merchantIncoming={};
+	for (const providerName in allProviders) {
+		checklist.push((async ()=>{
+			// balance
+			var prd=allProviders[providerName];
+			if (!prd.getReconciliation) return 'reconciliation is not supported by '+providerName;
+			var {received, commission, confirmedOrders, recon_tag, recon_time=end}=await prd.getReconciliation(from,end, forceRecon);
+			var recon_id=providerName+recon_tag;
+			received=Number(received)||0;
+			commission=Number(commission)||0;
+			checked.push({_id:recon_id, account:providerName, received, commission, recon_tag, time:recon_time});
+			var upds=[];
+			for (const order of confirmedOrders) {
+				var {orderId, money} =order;
+				money=Number(money)||0;
+				if (!money) continue;
+				var bill =await db.bills.findOne({_id:ObjectId(orderId)});
+				if (!bill) continue;
+				var {merchantid, _id:ref_id, time, share}=bill;
+				if (time.getDate()!=recon_time.getDate()) time=recon_time;
+				if (!await db.outstandingAccounts.findOne({account:'user', ref_id})) {
+					var rec_id=new ObjectId();
+					db.outstandingAccounts.insertOne(
+						{account:providerName, receivable:num2dec(money), recharge:num2dec(-money), time, ref_id, op_id:rec_id}
+					);
+				}
+				var ids={ref_id, recon_id, time};
+				var commission=Number((money*(1-share)).toFixed(2));
+				upds.push({updateOne:{
+					filter:{account:merchantid, recon_id}, 
+					update:{$set:{account:merchantid, recharge:num2dec(-money), balance:num2dec(money-commission), commission:num2dec(commission), ...ids}}, 
+					upsert:true}
+				});
+				// merchantIncoming[merchantid]=merchantIncoming[merchantid]||{recharge:0, commission:0};
+				// merchantIncoming[merchantid].recharge+=paidmoney;
+				// merchantIncoming[merchantid].commission+=commission;
+			}
+			upds.length && db.accounts.bulkWrite(upds, noOrder);
+		})());
+	}
+	if (checklist.length) {
+		var ret=await Promise.all(checklist);
+		if (checked.length==0) return 0;
+		db.reconciliation.bulkWrite(checked.map(item=>({updateOne:{filter:{_id:item._id}, update:{$set:item}, upsert:true}})), noOrder);
+		// var ops=[];
+		// for (const merchantid in merchantIncoming) {
+		//     ops.push({updateOne:{filter:{_id:recon_id}, update:{account:merchantid, ...merchantIncoming[merchantid], time:end}, upsert:true}})
+		// }
+		// db.statements.bulkWrite(ops, noOrder);
+		var upds=[];
+		for (const checked_item of checked) {
+			var {_id:ref_id, received, commission, account, time}=checked_item;
+			if (received==0 && commission==0) continue;
+			var b=received-commission;
+			upds.push({updateOne:{
+				filter:{account:checked_item.account, ref_id}, 
+				update:{$set:{account, receivable:num2dec(-received), balance:num2dec(b), commission:num2dec(commission), time, ref_id}}, 
+				upsert:true}
+			});
+			// upds.push({updateMany:{filter:{account:checked_item.account, recon_id:null}, update:{$set:{recon_id:checked_item._id}}}})
+		}
+		db.outstandingAccounts.bulkWrite(upds, noOrder);
 
-            // upds.push({updateMany:{filter:{account:checked_item.account, recon_id:null}, update:{$set:{recon_id:checked_item._id}}}})
-        }
-        db.outstandingAccounts.bulkWrite(upds, noOrder);
-
-    }
+		return checked.length;
+	}
+	return 0;
 }
 
 setInterval(reconciliation, 30*60*1000);
+
+const get=async (table, subject, account) =>{
+	var {db}=getDB();
+	var op=[];
+	if (account) op.push({$match:{account}});
+	op.push({$group:{_id:'1', sum:{$sum:`${subject}`}}});
+	var [rec]=await db[table].aggregate(op).toArray();
+	return rec.sum;
+}
+
+exports.getAccountBalance=get.bind(null, 'accounts', 'balance');
+exports.getOutstandingBalance=get.bind(null, 'outstandingAccounts', 'balance');
+exports.getOutstandingReceivable=get.bind(null, 'outstandingAccounts', 'receivable')
+exports.reconciliation=reconciliation;

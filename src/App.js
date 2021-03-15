@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Admin, Resource, ListGuesser } from 'react-admin';
+import { Admin, Resource } from 'react-admin';
 // import TreeMenu from '@bb-tech/ra-treemenu';
 import DataProvider from './data-provider';
 import Users from './users';
@@ -10,7 +10,7 @@ import Providers from './providers';
 import Docs from './docs';
 import Statements from './statements';
 import createAuth from './auth';
-
+import financial from './financial';
 //icons
 import {AccountTree, BusinessCenter, SupervisorAccount, Apartment, Storefront, Receipt} from '@material-ui/icons';
 var location=window.location, start_params=new URLSearchParams(location.search), spec_server=start_params.get('server');
@@ -33,6 +33,7 @@ const App = () => (
 					<Resource key="users" name="users" icon={Storefront} {...Users}  options={{label:'商户', menuParent:'userManager'}}/>,
 					<Resource key="agents" name="agents" icon={Apartment} {...Agents} options={{label:'代理', menuParent:'userManager'}}/>,
 				<Resource key="providers" name="providers" icon={BusinessCenter} {...Providers} options={{label:'供应商'}}/>,
+				<Resource key="financial_recon" name="recon" icon={BusinessCenter} {...financial.Recon} options={{label:'对账历史'}}/>,
 				])
 			};
 			ret.push(<Resource key="bills" name="bills" icon={Receipt} {...Bills} options={{label:'订单'}}/>);

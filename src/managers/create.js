@@ -41,7 +41,7 @@ const PostToolbar = props => {
 function CreateAndEditView(method, props) {
 	return (<SimpleForm toolbar={<PostToolbar />}>
 			<TextInput source="name" label="显示名"/>
-			{method=='Create'?<TextInput source="id" label="登录名"/>:null}
+			{method==='Create'?<TextInput source="id" label="登录名"/>:null}
 			<TextInput source="pwd" label="密码" type="password"/>
 		</SimpleForm>)
 }

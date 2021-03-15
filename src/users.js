@@ -1,5 +1,5 @@
 import React, { useState, useEffect,useCallback } from "react";
-import { Drawer, useMediaQuery } from '@material-ui/core';
+import { Drawer } from '@material-ui/core';
 import { 
 	List, Datagrid, TextField, BooleanField, NumberField, EditButton, ShowButton,
 	Edit, Create, TabbedForm, FormTab, TextInput, BooleanInput, SelectInput,
@@ -10,10 +10,12 @@ import {
 	FormDataConsumer
 } from 'react-admin';
 import { useForm } from 'react-final-form';
-import {DateTimeField} from './extends/fields';
+import {DateTimeField, EscapedTextField} from './extends/fields';
 import { Route } from 'react-router';
 import md5 from 'md5';
-const objPath =require('object-path')
+
+const path=require('path');
+const objPath =require('object-path');
 
 const SaveWithNoteButton = ({ handleSubmitWithRedirect, acl, ...props }) => {
 		const { redirect } = props;
@@ -163,7 +165,7 @@ export const UserShow =props=> (
 		<SimpleShowLayout>
 			<TextField source="name" label="显示名"/>
 			<TextField source="key" />
-			<TextField source="merchantid" />
+			<EscapedTextField source="merchantid" />
 			<NumberField source="daily" label="当日收入" options={{ minimumFractionDigits: 2, maximumFractionDigits: 2}}/>
 			<NumberField source="profit" label="账户余额" options={{ minimumFractionDigits: 2, maximumFractionDigits: 2}}/>
 		</SimpleShowLayout>
@@ -179,7 +181,7 @@ class UserList extends React.Component {
 				<List {...props} filter={{ acl:'merchant' }} exporter={false} title="商户" actions={<UserListActions />}>
 					<Datagrid rowClick="show">
 						<TextField source="name" label="显示名"/>
-						<TextField source="id" label="登录名"/>
+						<EscapedTextField source="id" label="登录名"/>
 						<DateTimeField source="createTime" label="创建时间"/>
 						{/* <TextField source="key" />
 						<TextField source="merchantid" /> */}
@@ -219,9 +221,10 @@ class UserList extends React.Component {
 				</Route>
 
 				<Route path="/users/:id">
-					{({ match }) => {
-						const isMatch =	match && match.isExact && match.params && match.params.id !== 'create';
+					{({ match , location}) => {
+						const isMatch =	match  && match.params && match.params.id !== 'create';
 						if (!isMatch) return null;
+						if (!match.isExact && path.basename(location.pathname)!=='1') return null;
 						return (
 							<Drawer
 								open={isMatch}
