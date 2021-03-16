@@ -32,52 +32,15 @@ exports.getProvider=function(pid) {
 const filter = require('filter-object');
 async function bestProvider(money,mer, options) {
 	if (!mer.providers) throw ('联系对接小伙伴，他忘记给商户配置渠道了');
-	var r=await Promise.all(
-		filter(external_provider, (v, k)=>{
-			var opt= mer.providers[k];
-			if (options) {
-				if (options.forecoreOnly && !(v.forecore)) return false;
-			}
-			if (!opt) return true;
-			return !opt.disabled;
-		})
-		.map(async (prd)=>{
-			if (!prd.bestPair) return {gap:Number.MAX_VALUE, coinType:'rmb', prd};
-			try {
-				return {...await prd.bestPair(money), prd};
-			}catch(e) {
-				return {gap:Number.MAX_VALUE, coinType:'rmb', prd}
-			}
-		})
-	)
-	if (r.length>1) r.sort((a, b)=>{return (a.gap-b.gap)});
-	for (var i=0; i<r.length; i++) {
-		if (r[i].coinType) break;
-	}
-	if (!r[i].coinType) throw ('没有可用的交易提供方');
-	return r[i];
-	// async.map(filter(external_provider, (v, k)=>{
-	// 	var opt= mer.providers[k];
-	// 	if (options) {
-	// 		if (options.forecoreOnly && !(v.forecore)) return false;
-	// 	}
-	// 	if (!opt) return true;
-	// 	return !opt.disabled;
-	// }), function(prd, cb) {
-	// 	if (!prd.bestPair) return cb(null, {gap:Number.MAX_VALUE, coinType:'rmb'});
-	// 	prd.bestPair(money, function(err, gap, coinType){
-	// 		if (err) return cb(null, {gap:Number.MAX_VALUE, coinType:''});
-	// 		// if (options && options.currency && options.currency!=coinType) return cb(null, {gap:Number.MAX_VALUE, coinType:''});
-	// 		return cb(null, {gap:gap, coinType:coinType, prd:prd});
-	// 	});
-	// }, function(err, r) {
-	// 	if (r.length>1) r.sort((a, b)=>{return (a.gap-b.gap)});
-	// 	for (var i=0; i<r.length; i++) {
-	// 		if (r[i].coinType) break;
-	// 	}
-	// 	if (!r[i].coinType) return callback('没有可用的交易提供方');
-	// 	callback(null, r[i].prd, r[i].coinType);
-	// });
+	var availbleProvders=filter(external_provider, (v, k)=>{
+		var opt= mer.providers[k];
+		if (options) {
+			if (options.forecoreOnly && !(v.forwardOrder)) return false;
+		}
+		if (!opt) return true;
+		return !opt.disabled;
+	})
+	return availbleProvders[Object.keys(availbleProvders)[0]];
 }
 async function order(orderid, money,mer, mer_userid, host) {
 	var {prd, coinType}=await bestProvider(money, mer, argv);

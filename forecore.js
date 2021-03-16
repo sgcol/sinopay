@@ -1,7 +1,6 @@
 const router=require('express').Router()
 , httpf =require('httpf')
-, bestProvider =require('./providerManager.js').bestProvider
-, getProvider=require('./providerManager').getProvider
+, {bestProvider, getProvider}=require('./providers')
 , getDB=require('./db.js')
 , ObjectId =require('mongodb').ObjectId
 , verifyMchSign =require('./merchants').verifySign
@@ -50,7 +49,7 @@ function start(err, db) {
 		var params =this.req.params;
 		
 		var merchant =this.req.merchant;
-		var provider=await pify(bestProvider)(money, merchant, {forecoreOnly:true, currency:currency});
+		var provider=await bestProvider(money, merchant, {forecoreOnly:true, currency:currency});
 		
 		var req=this.req;
 		var basepath=argv.host||url.format({protocol:req.protocol, host:req.headers.host, pathname:path.resolve(req.baseUrl, '..')});
@@ -67,9 +66,8 @@ function start(err, db) {
 		params.merchant=merchant;
 		params.orderId=orderId.toHexString();
 		try {
-			var [ret] =await Promise.all([
-				pify(provider.forwardOrder)(params),
-				db.bills.insertOne(decimalfy({
+			// var [ret] =await Promise.all([
+			await	db.bills.insertOne(decimalfy({
 					_id:orderId
 					, merchantOrderId:outOrderId
 					, parnterId:partnerId
@@ -80,9 +78,6 @@ function start(err, db) {
 					, provider:provider.name||provider.internal_name
 					, providerOrderId:''
 					, share:merchant.share
-					, sp_fee:merchant.sp_fee
-					, ap_fee:merchant.ap_fee
-					, pc_fee:merchant.pc_fee
 					, money:money
 					, paidmoney:-1
 					, currency: currency
@@ -94,10 +89,10 @@ function start(err, db) {
 					, return_url:return_url
 					, status:'prepare'})
 					,{w:1})
-			])
+			// ])
+			var ret=await provider.forwardOrder(params);
 			db.bills.updateOne({_id:orderId}, {$set:{providerOrderId:ret.providerOrderId, status:'forward'}});
-			Object.assign(ret ,{outOrderId:outOrderId, orderId:orderId.toHexString(), providerOrderId:ret.providerOrderId});
-			return callback(null, mchSign(merchant, ret));
+			return callback(null, mchSign(merchant, {...ret, outOrderId, orderId:params.orderId}));
 		}catch(e) {
 			return callback(e)
 		}

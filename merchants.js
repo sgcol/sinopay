@@ -19,18 +19,22 @@ exports.verifySign=	async function verifySign(req, res, next) {
 	delete _p.sign;
 	var userId=_p.partnerId||_p.partnerid||_p.merchantId||_p.merchantid;
 	if (!userId) return next('没有指定商户号');
-	var mer =await getMerchant(userId);
-	var wanted=md5(mer.key+qs.stringify(sortObj(_p, {sort:(a, b)=>{return a>b?1:-1}})));
-	if (sign!=wanted) {
-		var e={err:'签名错误'};
-		if (mer.debugMode) {
-			e.wanted=wanted;
-			e.str=mer.key+qs.stringify(sortObj(_p));
+	try {
+		var mer =await getMerchant(userId);
+		var wanted=md5(mer.key+qs.stringify(sortObj(_p, {sort:(a, b)=>{return a>b?1:-1}})));
+		if (sign!=wanted) {
+			var e={err:'签名错误'};
+			if (mer.debugMode) {
+				e.wanted=wanted;
+				e.str=mer.key+qs.stringify(sortObj(_p));
+			}
+			return next(e);
 		}
-		return next(e);
+		req.merchant=mer;
+		req.params=_p;
+		next();
+	} catch(e) {
+		next(e);
 	}
-	req.merchant=mer;
-	req.params=_p;
-	next();
 }
 exports.getMerchant=getMerchant;
