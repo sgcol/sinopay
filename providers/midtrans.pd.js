@@ -49,17 +49,34 @@ const timestring =(t)=>{
 router.all('/return', (req, res)=>{
 })
 router.all('/done', bodyParser.json(), (req, res) =>{
-	var {data, sign}=req.body;
 	try {
-		var payload=JSON.parse(data);
-	} catch(e) {
-		return res.end();
+		var {order_id:orderId, transaction_status:transactionStatus, fraud_status:fraudStatus} =await snap.transaction.notification(req.body)
+
+        console.log(`Transaction notification received. Order ID: ${orderId}. Transaction status: ${transactionStatus}. Fraud status: ${fraudStatus}`);
+
+        // Sample transactionStatus handling logic
+
+        if (transactionStatus == 'capture'){
+            // capture only applies to card transaction, which you need to check for the fraudStatus
+            if (fraudStatus == 'challenge'){
+                // TODO set transaction status on your databaase to 'challenge'
+            } else if (fraudStatus == 'accept'){
+                // TODO set transaction status on your databaase to 'success'
+            }
+        } else if (transactionStatus == 'settlement'){
+            // TODO set transaction status on your databaase to 'success'
+        } else if (transactionStatus == 'deny'){
+            // TODO you can ignore 'deny', because most of the time it allows payment retries
+            // and later can become success
+        } else if (transactionStatus == 'cancel' ||
+          transactionStatus == 'expire'){
+            // TODO set transaction status on your databaase to 'failure'
+        } else if (transactionStatus == 'pending'){
+            // TODO set transaction status on your databaase to 'pending' / waiting payment
+        }
+	} catch (e) {
+		res.status(500).send({err:e.message});
 	}
-	var {orderCode:orderid, buyerPayAmount:total_amount} =payload.body;
-	confirmOrder(orderid, total_amount, total_amount, (err)=>{
-		if (err && err!='used order') return res.end();
-		res.send('respCode=000000');
-	})
 });
 var forwardOrder =async function(params, callback) {
 	callback=callback||function(err, r) {
@@ -75,9 +92,10 @@ var forwardOrder =async function(params, callback) {
 			},
 		};
 		if (Array.isArray(params.type)) parameter.enabled_payments=type;
+		snap.httpClient.http_client.defaults.headers.common['X-Override-Notification'] = params._host+'pvd/midtrans/done';
  
 		var transaction =await snap.createTransaction(parameter);
-		updateOrder(params.orderId, {status:'待支付', providerOrderId:transaction.orderCode, lasttime:new Date(), midtrans_ret:transaction});
+		updateOrder(params.orderId, {status:'待支付', lasttime:new Date(), midtrans_ret:transaction});
 		var ret={url:transaction.redirect_url};
 		ret.pay_type=params.type;
 		return callback(null, ret);
