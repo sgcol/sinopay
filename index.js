@@ -21,7 +21,7 @@ require('./financial_affairs');
 
 const app = new express()
 
-var getProviders = require('./providerManager.js').getProvider;
+var getProviders = require('./providers').getProvider;
 
 if (argv.debugout) {
 	app.use(function (req, res, next) {
@@ -62,7 +62,7 @@ app.use(compression());
 app.use(express.static(path.join(__dirname, 'build'), {maxAge:0, index: 'index.html' }))
 getDB((err, db)=>{
 	app.use(bodyParser.json());
-	app.use(require('./forecore.js').router);
+	app.use('/forecore', require('./forecore.js').router);
 	app.all('/admin/login', httpf({u:'string', p:'?string', c:'?string', callback:true}, async function(username, password, encryptedPassword, callback) {
 		var res=this.res;
 		try {
