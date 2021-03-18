@@ -70,9 +70,9 @@ module.exports={
 		if (offset) cur=cur.skip(Number(offset));
 		if (limit) cur=cur.limit(Number(limit));
 		var [ret]=await cur.toArray();
+		if (!ret) return {total:0, rows:[]}
 		dedecimal(ret.rows);
-		var idx=0;
-		ret.rows.forEach((item)=>item._id=idx++);
+		ret.rows.forEach((item)=>item._id=item.account);
 		return ret;
 	}
 }

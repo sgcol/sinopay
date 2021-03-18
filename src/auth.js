@@ -13,6 +13,7 @@ export default (apiUrl) => ({
             if (err) return  Promise.reject(err);
             localStorage.setItem('accToken', a);
             localStorage.setItem('acl', o.acl);
+            localStorage.setItem('name', o.name);
             return Promise.resolve();
         })
     },
@@ -20,6 +21,7 @@ export default (apiUrl) => ({
     logout: () => {
         localStorage.removeItem('accToken');
         localStorage.removeItem('acl');
+        localStorage.removeItem('name');
         return Promise.resolve();
     },
     // called when the API returns an error
@@ -41,5 +43,9 @@ export default (apiUrl) => ({
     getPermissions: () => {
         var acl=localStorage.getItem('acl');
         return acl?Promise.resolve(acl):Promise.reject();
+    },
+    getIdentity: () =>{
+        var name=localStorage.getItem('name');
+        return name?Promise.resolve({fullName:name}):Promise.reject();
     }
 });

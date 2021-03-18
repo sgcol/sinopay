@@ -1,6 +1,6 @@
 import React from 'react'
 import { 
-	TitleForRecord
+	TitleForRecord, SimpleShowLayout, TextField
 } from 'react-admin';
 import Card from '@material-ui/core/Card';
 import ReactMarkdown  from 'react-markdown'
@@ -37,6 +37,16 @@ const DocShow =({options, ...rest})=> {
 			defaultTitle={options.label}
 	    />
 		<Card>
+		{
+			()=>{
+				return (
+					<SimpleShowLayout>
+						<TextField source="merchantId" label="partnerId"/>
+						<TextField source="key" label="MD5 Key"/>
+					</SimpleShowLayout>
+				)
+			}
+		}
 			<ReactMarkdown plugins={[gfm]} renders={renderers} >
     			{mdsrc}
     		</ReactMarkdown>

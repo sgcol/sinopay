@@ -59,7 +59,15 @@ app.use(crud(dataDrivers));
 
 const {addAuth}=require('./auth.js');
 app.use(compression());
-app.use(express.static(path.join(__dirname, 'build'), {maxAge:0, index: 'index.html' }))
+app.use(express.static(path.join(__dirname, 'build'), 	{
+		maxAge:7*24*3600*1000, 
+		index: 'index.html',
+		extensions:['html'],
+		setHeaders:(res, fn)=>{
+			if (path.extname(fn)=='.html') res.setHeader('Cache-Control', 'public, max-age=0');
+		},
+	}
+))
 getDB((err, db)=>{
 	app.use(bodyParser.json());
 	app.use('/forecore', require('./forecore.js').router);

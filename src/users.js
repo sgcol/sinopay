@@ -2,7 +2,7 @@ import React, { useState, useEffect,useCallback } from "react";
 import { Drawer } from '@material-ui/core';
 import { 
 	List, Datagrid, TextField, BooleanField, NumberField, EditButton, ShowButton,
-	Edit, Create, TabbedForm, FormTab, TextInput, BooleanInput, SelectInput,
+	Edit, Create, TabbedForm, FormTab, TextInput, BooleanInput, SelectInput, ReferenceField, 
 	Show, SimpleShowLayout,
 	Loading, Error,
 	useDataProvider,
@@ -165,13 +165,19 @@ export const UserShow =props=> (
 		<SimpleShowLayout>
 			<TextField source="name" label="显示名"/>
 			<TextField source="key" />
-			<EscapedTextField source="merchantid" />
-			<NumberField source="daily" label="当日收入" options={{ minimumFractionDigits: 2, maximumFractionDigits: 2}}/>
-			<NumberField source="profit" label="账户余额" options={{ minimumFractionDigits: 2, maximumFractionDigits: 2}}/>
+			<TextField label="partnerId" source="merchantid" />
+			<ReferenceField label="账户余额" source="id" reference="statementsSummary">
+				{/* <NumberField source="daily" label="当日收入" options={{ minimumFractionDigits: 2, maximumFractionDigits: 2}}/> */}
+				<NumberField source="balance" label="账户余额" options={{ minimumFractionDigits: 2, maximumFractionDigits: 2}}/>
+			</ReferenceField>
 		</SimpleShowLayout>
 	</Show>
 )
 
+const DebugField =(props)=>{
+	console.log(props);
+	return <TextField {...props} />
+}
 class UserList extends React.Component {
 	render() {
 		const props  = this.props;
@@ -187,8 +193,14 @@ class UserList extends React.Component {
 						<TextField source="merchantid" /> */}
 						<BooleanField source="debugMode" label="调试"/>
 						<NumberField source="share" label="分成" options={{style:"percent"}}/>
-						<NumberField source="daily" label="当日收入" options={{ minimumFractionDigits: 2, maximumFractionDigits: 2}}/>
-						<NumberField source="profit" label="账户余额" options={{ minimumFractionDigits: 2, maximumFractionDigits: 2}}/>
+						<ReferenceField label="账户余额" source="id" reference="statementsSummary">
+							<DebugField source="balance" />
+							{/* {
+								(props)=>{
+									return 	<NumberField source="balance" label="账户余额" options={{ minimumFractionDigits: 2, maximumFractionDigits: 2}} {...props}/>
+								}
+							} */}
+						</ReferenceField>
 						<EditButton />
 						<ShowButton />
 					</Datagrid>
@@ -234,7 +246,7 @@ class UserList extends React.Component {
 								{isMatch ? (
 									<UserEdit
 										// className={classes.drawerContent}
-										id={isMatch ? match.params.id : null}
+										id={isMatch ? decodeURIComponent(match.params.id) : null}
                                         onCancel={this.handleClose}
 										{...props}
 									/>

@@ -31,7 +31,7 @@ const App = () => (
 				<Resource key="userManager" name="userManager" icon={AccountTree} options={{label:"用户管理", isMenuParent:true}} />,
 					<Resource key="managers" name="managers" icon={SupervisorAccount} {...Managers} options={{label:'管理员', menuParent:'userManager'}}/>,
 					<Resource key="users" name="users" icon={Storefront} {...Users}  options={{label:'商户', menuParent:'userManager'}}/>,
-					<Resource key="agents" name="agents" icon={Apartment} {...Agents} options={{label:'代理', menuParent:'userManager'}}/>,
+					// <Resource key="agents" name="agents" icon={Apartment} {...Agents} options={{label:'代理', menuParent:'userManager'}}/>,
 				<Resource key="providers" name="providers" icon={BusinessCenter} {...Providers} options={{label:'供应商'}}/>,
 				<Resource key="financial_recon" name="recon" icon={BusinessCenter} {...financial.Recon} options={{label:'对账历史'}}/>,
 				])
@@ -40,8 +40,7 @@ const App = () => (
 			ret.push(<Resource key="statements" name="statements" icon={Receipt} {...Statements} options={{label:'报表'}}/>);
 			ret.push(<Resource key="docs" name="docs" {...Docs} options={{label:'文档'}} />);
 			return ret;
-		}
-		}
+		}}
 	</Admin>
 );
 

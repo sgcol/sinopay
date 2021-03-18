@@ -38,7 +38,7 @@ import { HttpError } from 'react-admin';
 function _id2id(arr) {
     arr.forEach((item)=>{
         if (item._id!=null) {
-            item.id=encodeURIComponent(item._id);
+            item.id=item._id;
             item._id=undefined;
         }
     })
@@ -46,7 +46,7 @@ function _id2id(arr) {
 }
 function id2_id(obj) {
     if (obj.id!=null) {
-        obj._id=decodeURIComponent(obj.id);
+        obj._id=obj.id;
         obj.id=undefined;
     }
     return obj;

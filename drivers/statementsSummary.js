@@ -9,6 +9,15 @@ module.exports={
 		var {filter={}, sort, order, offset, limit} =params;
 		try {
 			var filters=filter=JSON.parse(filter)
+			for (const key in filters) {
+				var value=filters[key];
+				if (Array.isArray(value)) filter[key]={$in:value};
+			}
+			if (filters._id) {
+				filters.account=filters._id;
+				delete filters._id;
+			}
+
 			if (filters.period) {
 				delete filters.period;
 			}
@@ -28,7 +37,7 @@ module.exports={
 			filter.account=req.auth._id;
 		}
 		const {db}=await getDB();
-		var rows=await db.accounts.aggregate([{$match:filter}, {$group:{_id:null, balance:{$sum:'$balance'}, commission:{$sum:'$commission'}, count:{$sum:1}}}]).toArray();
+		var rows=await db.accounts.aggregate([{$match:filter}, {$group:{_id:'$account', balance:{$sum:'$balance'}, commission:{$sum:'$commission'}, count:{$sum:1}}}]).toArray();
 		dedecimal(rows);
 		return {rows};
 	}
