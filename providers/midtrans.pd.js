@@ -17,13 +17,11 @@ const snap = new midtransClient.Snap({
 
 const _noop=function() {};
 
-exports.order=async function () {throw 'not impl'}
-
 exports.bestSell=null;
 exports.getBalance=_noop;
 exports.sell=_noop;
 exports.bestPair=(money, cb)=>{
-	return cb(null, -1, 'CNY');
+	return cb(null, -1, 'IDR');
 };
 exports.name='midtrans';
 exports.router=router;
@@ -48,7 +46,7 @@ const timestring =(t)=>{
 
 router.all('/return', (req, res)=>{
 })
-router.all('/done', bodyParser.json(), (req, res) =>{
+router.all('/done', bodyParser.json(), async (req, res) =>{
 	try {
 		var {order_id:orderId, transaction_status:transactionStatus, fraud_status:fraudStatus} =await snap.transaction.notification(req.body)
 

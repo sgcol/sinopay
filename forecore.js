@@ -46,7 +46,7 @@ function start(err, db) {
 
 		if (money==0) return callback('金额异常，能不为0');
 
-		var params =this.req.params;
+		var params ={...this.req.params, ...this.req.body};
 		
 		var merchant =this.req.merchant;
 		var provider=await bestProvider(money, merchant, {forecoreOnly:true, currency:currency});
