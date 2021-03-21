@@ -56,7 +56,7 @@ export const StatementsList = ({permissions, ...props}) => {
 		<List {...props} title="报表" bulkActionButtons={false} sort={{ field: 'time', order: 'DESC' }}>
 			<ExtendedDatagrid footerResource="statementsSummary">
 				<DateField source="time" footerText="Total" />
-                <ReferenceField label="商户" source="account" reference="users">
+                <ReferenceField label="商户" source="account" reference="users" link={false}>
 				    <TextField source="name" />
                 </ReferenceField>
 				<NumberField source="balance" label="收入" options={{ maximumFractionDigits: 2 }} footerSource="balance"/>

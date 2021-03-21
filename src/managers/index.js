@@ -58,7 +58,7 @@ class ManagerList extends React.Component {
                                 {isMatch ? (
                                     <ManagerEdit
                                         // className={classes.drawerContent}
-                                        id={isMatch ? match.params.id : null}
+                                        id={isMatch ? decodeURIComponent(match.params.id) : null}
                                         onCancel={this.handleClose}
                                         {...props}
                                     />

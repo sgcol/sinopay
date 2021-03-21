@@ -38,7 +38,7 @@ import { HttpError } from 'react-admin';
 function _id2id(arr) {
     arr.forEach((item)=>{
         if (item._id!=null) {
-            item.id=encodeURIComponent(item._id);
+            item.id=item._id;
             item._id=undefined;
         }
     })
@@ -46,7 +46,7 @@ function _id2id(arr) {
 }
 function id2_id(obj) {
     if (obj.id!=null) {
-        obj._id=decodeURIComponent(obj.id);
+        obj._id=obj.id;
         obj.id=undefined;
     }
     return obj;
@@ -161,15 +161,19 @@ export default (apiUrl, httpClient = myFetchJson) => {
         },
 
         getMany: (resource, params) => {
+            var {ids:_id, ...rest}=params
             const query = {
-                filter: JSON.stringify({ _id: params.ids }),
+                filter: JSON.stringify({_id, ...rest}),
             };
             const url = `${apiUrl}/${mapResource(resource)}?${stringify(query)}`;
             return httpClient(url).then(({ json }) => {
-                _id2id(json.rows);
+                // _id2id(json.rows);
+                var ids={};
+                json.rows.forEach(v=>ids[v._id]=v);
+                var data=params.ids.map(id=>({id, ...ids[id]}))
                 return {
-                    data: json.rows,
-                    total: json.total    
+                    data,
+                    total: params.ids.length
                 }
             }) 
         },

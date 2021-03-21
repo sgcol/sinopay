@@ -1,7 +1,6 @@
-const {createDriver, keepOrignId, objectId}=require('./dataDrivers.js')
 
 module.exports={
-	users: createDriver('users'),
+	users: require('./users'),
 	recon: require('./recon'),
 	providers: require('./providers'),
 	bills: require('./bills'),

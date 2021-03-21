@@ -1,4 +1,5 @@
 import * as React from "react";
+import {TextField} from 'react-admin';
 
 const timestring =(t)=>{
 	t=new Date(t);
@@ -8,6 +9,10 @@ const timestring =(t)=>{
 export const DateTimeField = ({ record = {}, source }) =>
 	<span>{timestring(record[source])}</span>
 
-export const EscapedTextField =({record={}, source})=> (
-	<span>{decodeURIComponent(typeof record==='object'?record[source]:record)}</span>
-)
+export const EscapedTextField =({record, source, ...rest})=> {
+	var str=decodeURIComponent(typeof record==='object'?record[source]:record);
+	// record={source:str};
+	// return <TextField record={record} source={source} {...rest} />	
+	// return <TextField {...props} />
+	return (<span>{str}</span>)
+}

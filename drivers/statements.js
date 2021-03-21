@@ -23,13 +23,11 @@ module.exports={
 				else filters.time={'$lte':new Date(filters.endTime)}
 				delete filters.endTime;
 			}
-		} catch(e) {
-		} finally {
-			if (!filter.account) filter.account={$ne:'user'}
-		}
+		} catch(e) {}
 		if (!aclgte(role, 'manager')) {
 			filter.account=req.auth._id;
 		}
+		if (!filter.account) filter.account={$ne:'user'}
 
 		var groupby={dot:'$dot', account:'$account', currency:'$currency'}, af={dot:{$dateToString:{date:'$time', format:'%Y-%m-%d'}}};
 
@@ -70,9 +68,9 @@ module.exports={
 		if (offset) cur=cur.skip(Number(offset));
 		if (limit) cur=cur.limit(Number(limit));
 		var [ret]=await cur.toArray();
+		if (!ret) return {total:0, rows:[]}
 		dedecimal(ret.rows);
-		var idx=0;
-		ret.rows.forEach((item)=>item._id=idx++);
+		ret.rows.forEach((item)=>{item._id=item.account});
 		return ret;
 	}
 }

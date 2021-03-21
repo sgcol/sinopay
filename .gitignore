@@ -9,7 +9,7 @@
 /coverage
 
 # production
-/build
+# /build
 
 # misc
 .DS_Store
@@ -26,6 +26,6 @@ yarn-error.log*
 package-lock.json
 
 # downloads
-/providers/reconciliation
+/p:roviders/reconciliation
 /reconciliation
 

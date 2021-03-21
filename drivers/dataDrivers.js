@@ -2,6 +2,7 @@ const getDB =require('../db.js')
 , {ObjectId} =require('mongodb')
 , {dedecimal, decimalfy, isValidNumber} =require('../etc.js')
 , {randomBytes} =require('crypto')
+, {aclgte} =require('../auth')
 
 function objectId(id) {
     return ObjectId(id)
@@ -17,15 +18,16 @@ function guessId(id) {
     }
 }
 function createDriver(collectName, options) {
-    var {idChanger, beforeFind, afterFind, beforeUpdate}=options||{};
-    idChanger=idChanger||guessId;
+    var {idChanger=guessId, beforeFind, afterFind, beforeUpdate}=options||{};
     return {
         list: async (params, role)=>{
             if (params.filter) {
-                try {
-                    params.filter=JSON.parse(params.filter)
-                } catch(e) {
-                    params.filter={}
+                if (typeof params.filter=='string') {
+                    try {
+                        params.filter=JSON.parse(params.filter)
+                    } catch(e) {
+                        params.filter={}
+                    }
                 }
                 for (const key in params.filter) {
                     var value=params.filter[key];
@@ -42,7 +44,7 @@ function createDriver(collectName, options) {
             }
             const {db}=await getDB();
             if (beforeFind) params.filter=beforeFind(params.filter, params, role);
-            var cur=db[collectName].find(params.filter);
+            var cur=db[collectName].find(params.filter, {projection:{password:0, salt:0}});
             if (params.sort) {
                 if (params.order=="ASC" || params.order=='asc') 
                     cur.sort({[params.sort]:1});
@@ -56,7 +58,7 @@ function createDriver(collectName, options) {
             return {rows, total};
         },
         create:async(params, role) => {
-            if (role!='admin') throw 'no privilege to create one';
+            if (!aclgte(role, 'manager')) throw 'no privilege to create one';
             if (params.id) {
                 params._id=idChanger(params.id);
                 delete params.id;
@@ -66,8 +68,9 @@ function createDriver(collectName, options) {
             const {insertedId:_id, ...rest} =await db[collectName].insertOne(decimalfy({createTime:new Date(), key:randomBytes(20).toString('hex'), merchantid:new ObjectId().toHexString(), debugMode:true, ...params}), {w:1});
             return {_id, ...params};
         },
-        update:async(id, params, role) =>{
+        update:async(id, params, role, req) =>{
             const {db}=await getDB();
+            if (!aclgte(role, 'manager')) id=req.auth._id;
             var filter={_id:idChanger(id)}, upd={$set:decimalfy(params)};
             if (beforeUpdate) {
                 var changed=beforeUpdate(filter, upd, params, role);
@@ -75,11 +78,12 @@ function createDriver(collectName, options) {
                 upd=changed.upd;
             }
             await db[collectName].updateOne(filter, upd, {w:1});
-            return {id, ...params};
+            return {id, ...dedecimal(params)};
         },
         updateMany:async(ids, params, role)=>{
             const {db}=await getDB();
-            var filter={_id:idChanger(id)}, upd={$set:decimalfy(params)};
+            if (!aclgte(role, 'manager')) ids=[req.auth._id];
+            var filter={_id:{$in:ids.map(idChanger)}}, upd={$set:decimalfy(params)};
             if (beforeUpdate) {
                 var changed=beforeUpdate(filter, upd, params, role);
                 filter=changed.filter;
@@ -90,6 +94,7 @@ function createDriver(collectName, options) {
         },
         deleteOne:async(id, params, role) =>{
             const {db}=await getDB();
+            if (!aclgte(role, 'manager')) id=req.auth._id;
             var filter={_id:idChanger(id)};
             if (beforeFind) filter=beforeUpdate(filter, params, role);
             await db[collectName].remove(filter);
@@ -97,6 +102,7 @@ function createDriver(collectName, options) {
         },
         deleteMany:async(ids, params, role)=>{
             const {db}=await getDB();
+            if (!aclgte(role, 'manager')) ids=[req.auth._id];
             var filter={_id:{$in:ids.map(idChanger)}};
             if (beforeFind) filter=beforeUpdate(filter, params, role);
             await db[collectName].remove(filter);

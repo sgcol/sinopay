@@ -65,8 +65,9 @@
     ]
   },
   "devDependencies": {
+    "@material-ui/lab": "^4.0.0-alpha.57",
     "raw-loader": "^4.0.2",
-    "react-admin": "^3.11.3",
+    "react-admin": "^3.13.4",
     "react-markdown": "^5.0.3",
     "react-syntax-highlighter": "^15.4.3",
     "remark-gfm": "^1.0.0"

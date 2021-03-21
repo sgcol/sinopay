@@ -76,6 +76,8 @@ const ReconActions = (props) => {
 	var classes=useStyles();
 	var refresh=useRefresh();
 
+	var choices=[{id:null, name:'All'}];
+	if (providers) choices=choices.concat(providers);
 	return (
 		<TopToolbar className={className} {...sanitizeListRestProps(rest)}>
 			<Form onSubmit={_noop}>
@@ -83,10 +85,10 @@ const ReconActions = (props) => {
 		            <form onSubmit={handleSubmit}>
 						<Box display="flex" alignItems="flex-end" mb={1}>
 							<Box component="span" mr={2}>
-							<SelectInput label="供应商" choices={[{id:null, name:'All'}].concat(providers)} source="provider" />
+								<SelectInput label="供应商" choices={choices} source="provider" />
 							</Box>
 							<Box component="span" mr={2}>
-							<DateInput label="日期" source="date"/>
+								<DateInput label="日期" source="date"/>
 							</Box>
 							<Box component="span" mr={2}>
 							<FormDataConsumer>
@@ -117,7 +119,7 @@ const ReconActions = (props) => {
 };
 
 const ReconList = (props) => {
-	return (<List {...props} exporter={false} actions={<ReconActions />} title="对账" bulkActionButtons={false} sort={{ field: 'time', order: 'DESC' }}>
+	return (<List {...props} exporter={false} actions={<ReconActions />} title='对账单' bulkActionButtons={false} sort={{ field: 'time', order: 'DESC' }}>
 		<ExtendedDatagrid>
 			<DateField source="time" label="时间"/>
 			<TextField source="account" label="供应商"/>

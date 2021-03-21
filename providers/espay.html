@@ -1,0 +1,14 @@
+<iframe id="sgoplus-iframe" src="" scrolling="no" frameborder="0"></iframe>
+<script type="text/javascript" src="https://sandbox-kit.espay.id/public/signature/js"></script>
+<script type="text/javascript">
+    window.onload = function() {
+        var data = {
+            key: "a7bec7f98f4683a1b75dbc91bbd17079",
+            paymentId: '_' + Math.random().toString(36).substr(2, 9),
+            backUrl: "http://127.0.0.1/test"
+        },
+        sgoPlusIframe = document.getElementById("sgoplus-iframe");
+        if (sgoPlusIframe !== null) sgoPlusIframe.src = SGOSignature.getIframeURL(data);
+        SGOSignature.receiveForm();
+    };
+</script>
