@@ -2,10 +2,10 @@ import React, { useState, useEffect,useCallback } from "react";
 import { Drawer } from '@material-ui/core';
 import { 
 	List, Datagrid, TextField, BooleanField, NumberField, EditButton, ShowButton,
-	Edit, Create, TabbedForm, FormTab, TextInput, BooleanInput, SelectInput, ReferenceField, 
+	Edit, Create, TabbedForm, FormTab, TextInput, BooleanInput, SelectInput, ReferenceField, NumberInput,
 	Show, SimpleShowLayout,
 	Loading, Error,
-	useDataProvider,
+	useDataProvider, useGetMany,
 	TopToolbar, CreateButton, SaveButton, Toolbar,
 	FormDataConsumer
 } from 'react-admin';
@@ -52,16 +52,17 @@ const PostToolbar = props => {
 	var {redirect} =props;
 	return (<Toolbar {...props}>
 			<SaveWithNoteButton
-					label="Save"
-					redirect={redirect}
-					submitOnEnter={false}
-					{...props}
+				label="Save"
+				redirect={redirect}
+				submitOnEnter={false}
+				{...props}
 			/>
 		</Toolbar>
 	);
 }
 
 const Providers=({contents, ...props}) => {
+
 	const form = useForm();
 	var formdata = form.getState().values;
 	var eles=[];
@@ -69,7 +70,7 @@ const Providers=({contents, ...props}) => {
 		var enable=!objPath.get(formdata, ['providers', prd.id, 'disabled'], false);
 		eles.push((
 			<div key={prd.id}>
-			<BooleanInput source={`providers.${prd.id}.enabled`} defaultValue={enable} label={`${prd.name}`}/>
+			<BooleanInput source={`providers.${prd.id}.disabled`} parse={v=>!v} format={v=>!v} label={`${prd.name}`}/>
 			<FormDataConsumer>
 				{
 					({formData, ...rest})=>{
@@ -141,7 +142,7 @@ function CreateAndEditView(method, props) {
 				<LoginName source="id" label="登录名"/>
 				<TextInput source="pwd" label="密码" type="password"/>
 				<BooleanInput source="debugMode" />
-				<TextInput source="share" defaultValue={3}/>
+				<NumberInput source="share" defaultValue={3} options={{ minimumFractionDigits: 2, maximumFractionDigits: 2}}/>
 				<SelectInput source="parent" choices={agents}/>
 			</FormTab>
 			<FormTab label="Providers">
@@ -166,10 +167,8 @@ export const UserShow =props=> (
 			<TextField source="name" label="显示名"/>
 			<TextField source="key" />
 			<TextField label="partnerId" source="merchantid" />
-			<ReferenceField label="账户余额" source="id" reference="statementsSummary">
-				{/* <NumberField source="daily" label="当日收入" options={{ minimumFractionDigits: 2, maximumFractionDigits: 2}}/> */}
-				<NumberField source="balance" label="账户余额" options={{ minimumFractionDigits: 2, maximumFractionDigits: 2}}/>
-			</ReferenceField>
+			<NumberField label="账户余额" source="balance" options={{ minimumFractionDigits: 2, maximumFractionDigits: 2}} />
+			<NumberField label="手续费" source="commission" options={{ minimumFractionDigits: 2, maximumFractionDigits: 2}}/>
 		</SimpleShowLayout>
 	</Show>
 )
@@ -181,7 +180,7 @@ const DebugField =(props)=>{
 class UserList extends React.Component {
 	render() {
 		const props  = this.props;
-
+		
 		return (
 			<React.Fragment>
 				<List {...props} filter={{ acl:'merchant' }} exporter={false} title="商户" actions={<UserListActions />}>
@@ -193,14 +192,8 @@ class UserList extends React.Component {
 						<TextField source="merchantid" /> */}
 						<BooleanField source="debugMode" label="调试"/>
 						<NumberField source="share" label="分成" options={{style:"percent"}}/>
-						<ReferenceField label="账户余额" source="id" reference="statementsSummary">
-							<DebugField source="balance" />
-							{/* {
-								(props)=>{
-									return 	<NumberField source="balance" label="账户余额" options={{ minimumFractionDigits: 2, maximumFractionDigits: 2}} {...props}/>
-								}
-							} */}
-						</ReferenceField>
+						<NumberField label="账户余额" source="balance" options={{ minimumFractionDigits: 2, maximumFractionDigits: 2}}/>
+						<NumberField label="手续费" source="commission" options={{ minimumFractionDigits: 2, maximumFractionDigits: 2}}/>
 						<EditButton />
 						<ShowButton />
 					</Datagrid>
@@ -226,7 +219,7 @@ class UserList extends React.Component {
 						if (!isMatch) return null;
 						return (
 							<Drawer open={isMatch} anchor="right" onClose={this.handleClose}>
-								{isMatch? <UserShow id={id} {...props}/>:null}
+								{isMatch? <UserShow id={decodeURIComponent(id)} {...props}/>:null}
 							</Drawer>
 						)
 					}}

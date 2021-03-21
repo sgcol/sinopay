@@ -1,22 +1,19 @@
 import React, {useEffect, useState} from 'react'
 import { 
-	Title, SimpleShowLayout, TextField, useDataProvider, useGetIdentity
+	Title, useDataProvider, useGetIdentity
 } from 'react-admin';
-import {Card, CardHeader, CardContent, Grid, Typography, Divider, makeStyles} from '@material-ui/core';
-import ReactMarkdown  from 'react-markdown'
-import gfm from 'remark-gfm'
-import {Prism as SyntaxHighlighter} from 'react-syntax-highlighter'
-import { dark } from 'react-syntax-highlighter/dist/esm/styles/prism'
-/* eslint import/no-webpack-loader-syntax: off */
-const mdsrc =require('!raw-loader!./四方接口.md').default;
-// const objPath =require('object-path')
+import {Button, Card, CardHeader, CardContent, Grid, Typography, Divider, makeStyles} from '@material-ui/core';
+import Alert from '@material-ui/lab/Alert';
 
 const useStyles = makeStyles((theme) => ({
+  mb2:{
+	  marginBottom:'2em',
+  },
   header:{
 	borderBottom: '1px solid #e9ecef',
 	display: 'flex',
     fontSize: '1.25em',
-    margin: 0,
+    margin: '0px',
     minHeight: '64px',
     overflow: 'hidden',
     padding: '0 16px',
@@ -54,24 +51,21 @@ const useStyles = makeStyles((theme) => ({
   },
 }));
 
-const renderers = {
-  code: ({language, value}) => {
-    return (<SyntaxHighlighter style={dark} language="javascript">
-		{value}
-		</SyntaxHighlighter>
-	)
-  }
+const DisableDebugMode=({user, ...rest})=>{
+	const action=<Button color="inherit" size="small">DISABLE DEBUG</Button>
+	return (user && user.debugMode)? (
+		<Alert severity="warning" variant="filled" {...rest} action={action}>您正在使用调试接口，在正式上线之前请务必关闭调试模式</Alert>
+	):null
 }
-
-const DocShow =({options, permissions, ...rest})=> {
+const DashboardShow =({options, permissions, ...rest})=> {
 	var classes=useStyles();
 	const { identity } = useGetIdentity();
 	const dp=useDataProvider();
-	var [userKey, setKey]=useState();
+	var [user, setUser]=useState();
 	useEffect(()=>{
 		if (identity && identity.acl=='merchant') {
 			dp.getOne('users', {id:identity.id})
-			.then(({data})=>setKey(data))
+			.then(({data})=>setUser(data))
 			.catch(()=>{})
 		}
 	}, [identity]);
@@ -86,35 +80,34 @@ const DocShow =({options, permissions, ...rest})=> {
 	// 	<MarkDownView />
 	// </Show>
 	<div className="show-page">
+		<DisableDebugMode user={user} className={classes.mb2}/>
 		<Title
 			defaultTitle={options.label}
 	    />
-		{userKey?(<Card>
-			<CardHeader title="对接参数" className={classes.header}/>
+		{user?(<Card>
+			<CardHeader title="Summary" className={classes.header}/>
 			<Grid container direction="row">
-				<Grid item xs={4} className={classes.item}>
-					<Typography variant="subtitle1">MD5 Key</Typography>
-					<Typography variant="body2" gutterBottom>{userKey.key}</Typography>
+				<Grid item xs={3} className={classes.item}>
+					<Typography variant="subtitle1" className={classes.subtitle}>{user.balance||0}</Typography>
+					<Typography variant="body2" gutterBottom>Balance</Typography>
 				</Grid>
 				<Divider orientation="vertical" flexItem />
-				<Grid item xs={4} className={classes.item}>
-					<Typography variant="subtitle1">PartnerId</Typography>
-					<Typography variant="body2" gutterBottom>{userKey.merchantid}</Typography>
+				<Grid item xs={3} className={classes.item}>
+					<Typography variant="subtitle1" className={classes.subtitle}>{user.count||0}</Typography>
+					<Typography variant="body2" gutterBottom>Total Transaction</Typography>
+				</Grid>
+				<Divider orientation="vertical" flexItem />
+				<Grid item xs={3} className={classes.item}>
+					<Typography variant="subtitle1" className={classes.subtitle}>{user.receivable||0}</Typography>
+					<Typography variant="body2" gutterBottom>Receivable</Typography>
 				</Grid>
 			</Grid>
 		</Card>)
 		:null
 		}
-		<Card>
-			<CardContent>
-				<ReactMarkdown plugins={[gfm]} renders={renderers} >
-					{mdsrc}
-				</ReactMarkdown>
-			</CardContent>
-		</Card>
 	</div>
 )}
 
 export default {
-	list:DocShow,
+	list:DashboardShow,
 }

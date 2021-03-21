@@ -36,9 +36,13 @@ module.exports={
 		if (!aclgte(role, 'manager')) {
 			filter.account=req.auth._id;
 		}
+		var groupby=null;
+		if (!filter.account) filter.account={$ne:'user'};
+		else groupby='$account';
+
 		const {db}=await getDB();
-		var rows=await db.accounts.aggregate([{$match:filter}, {$group:{_id:'$account', balance:{$sum:'$balance'}, commission:{$sum:'$commission'}, count:{$sum:1}}}]).toArray();
+		var rows=await db.accounts.aggregate([{$match:filter}, {$group:{_id:groupby, balance:{$sum:'$balance'}, commission:{$sum:'$commission'}, count:{$sum:1}}}]).toArray();
 		dedecimal(rows);
-		return {rows};
+		return {rows, total:rows.length};
 	}
 }

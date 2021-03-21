@@ -46,6 +46,6 @@ module.exports={
 		}
 		var rows=await db.bills.aggregate([{$match:params.filter}, {$group:{_id:null, money:{$sum:'$money'}}}]).toArray();
 		dedecimal(rows);
-		return {rows};
+		return {rows, total:rows.length};
 	},
 }
