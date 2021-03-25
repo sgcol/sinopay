@@ -1,4 +1,4 @@
-import React, { useState, useEffect,useCallback, useResourceContext, useTranslate } from "react";
+import React, { useState, useEffect,useCallback, useResourceContext } from "react";
 import { Drawer, Typography, makeStyles } from '@material-ui/core';
 import InboxIcon from '@material-ui/icons/Inbox';
 import { 
@@ -6,7 +6,7 @@ import {
 	Edit, Create, TabbedForm, FormTab, TextInput, BooleanInput, SelectInput, ReferenceField, NumberInput,
 	Show, SimpleShowLayout,
 	Loading, Error,
-	useDataProvider, useGetMany,useListContext, 
+	useDataProvider, useGetMany,useListContext, useTranslate, 
 	TopToolbar, CreateButton, SaveButton, Toolbar,
 	FormDataConsumer
 } from 'react-admin';
@@ -137,11 +137,15 @@ function CreateAndEditView(method, props) {
 		else return null;
 	}
 
-	return (<TabbedForm toolbar={<PostToolbar />}>
+	var toolbar;
+	if (method==='Create') toolbar=<PostToolbar acl="merchant"/>
+	else toolbar=<PostToolbar />
+	return (<TabbedForm toolbar={toolbar}>
 			<FormTab label="General">
 				<TextInput source="name" label="显示名"/>
 				<LoginName source="id" label="登录名"/>
 				<TextInput source="pwd" label="密码" type="password"/>
+				<input name="acl" hidden value="merchant"></input>
 				<BooleanInput source="debugMode" />
 				<NumberInput source="share" defaultValue={3} options={{ minimumFractionDigits: 2, maximumFractionDigits: 2}}/>
 				<SelectInput source="parent" choices={agents}/>
@@ -199,7 +203,6 @@ const useStyles = makeStyles(
 
 const Empty = props => {
     const { basePath } = useListContext(props);
-    const resource = useResourceContext(props);
     const classes = useStyles(props);
     const translate = useTranslate();
 
@@ -227,7 +230,7 @@ class UserList extends React.Component {
 		
 		return (
 			<React.Fragment>
-				<List {...props} filter={{ acl:'merchant' }} exporter={false} title="商户" actions={<UserListActions />} empty={Empty}>
+				<List {...props} filter={{ acl:'merchant' }} exporter={false} title="商户" actions={<UserListActions />} empty={<Empty />}>
 					<Datagrid rowClick="show">
 						<TextField source="name" label="显示名"/>
 						<EscapedTextField source="id" label="登录名"/>
