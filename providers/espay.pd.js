@@ -8,9 +8,12 @@ const url = require('url')
 , httpf =require('httpf')
 , fetch=require('node-fetch')
 , path =require('path')
-, argv=require('yargs').argv;
+, argv=require('yargs').argv
+, crypto=require('crypto')
 
 const _noop=function() {};
+
+const signatureKey='jvqvatll76wotamq';
 
 exports.bestSell=null;
 exports.getBalance=_noop;
@@ -44,19 +47,35 @@ const timestring =(t)=>{
 	return `${t.getDate().pad()}/${(t.getMonth()+1).pad()}/${t.getFullYear().pad(4)} ${t.getHours().pad()}:${t.getMinutes().pad()}:${t.getSeconds().pad()}`;
 }
 
+const signInquiry=(obj)=>{
+    var {rq_uuid, rs_datetime, order_id, error_code }=obj;
+    var hash=crypto.createHash('sha256');
+    hash.update(('##'+[signatureKey, rq_uuid, rs_datetime, order_id, error_code, 'INQUIRY-RS'].join('##')+'##').toUpperCase());
+    obj.signature=hash.digest('hex');
+    return obj;
+}
+
+const signDone=(obj)=>{
+    var {rq_uuid, rs_datetime, error_code }=obj;
+    var hash=crypto.createHash('sha256');
+    hash.update(('##'+[signatureKey, rq_uuid, rs_datetime, error_code, 'PAYMENTREPORT-RS'].join('##')+'##').toUpperCase());
+    obj.signature=hash.digest('hex');
+    return obj;
+}
+
 router.all('/return', (req, res)=>{
 })
-router.all('/done', bodyParser.urlencoded({limit:'100k'}), async function (req, res) {
-    var {order_id:orderId, amount:paid, payment_ref:providerOrderId}=req.body;
+router.all('/done', bodyParser.urlencoded({extended:true}), async function (req, res) {
+    var {rq_uuid, rq_datetime, order_id:orderId, amount:paid, payment_ref:providerOrderId}=req.body;
     paid=Number(paid);
     try {
         var {db}=await getDB();
         var {matchedCount}=await db.bills.updateOne({_id:ObjectId(orderId)}, {$set:{providerOrderId}}, {w:1});
-        if (matchedCount==0) throw 'Invalid Order Id';
+        if (matchedCount==0) throw 'Invalid order id';
         await confirmOrder(orderId, paid);
-        return res.send(`0, Success, ${orderId}, ${orderId}, ${yyyymmddtimestring()}`);
+        return res.send(signDone({rq_uuid, rs_datetime:rq_datetime, order_id:orderId, error_code:'0000', error_message:'Success', reconcile_id:orderId, reconcile_datetime:yyyymmddtimestring()}));
     } catch(e) {
-        return res.send(`1, ${typeof e==='object'?e.message:e},,,`);
+        return res.send(signDone({rq_uuid, rs_datetime:rq_datetime, error_code:'0001', error_message:typeof e==='object'?e.message:e}));
     }
 });
 router.all('/portal', (req, res)=>{
@@ -81,13 +100,13 @@ router.all('/portal', (req, res)=>{
 </script>`
     res.send(content);
 });
-router.post('/inquiry', bodyParser.urlencoded({limit:'100k'}), async function(req, res) {
-    var orderId=req.body.order_id;
+router.post('/inquiry', bodyParser.urlencoded({extended:true}), async function(req, res) {
+    var {rq_uuid, rq_datetime, order_id:orderId}=req.body;
     var {db}=await getDB();
     var order=await db.bills.findOne({_id:ObjectId(orderId)});
-    if (!order) return res.send('1;Invalid Order Id;;;;;');
+    if (!order) return res.send({rq_uuid, rq_datetime, error_code:'0001', error_message:'Invalid order id'});
     var {money, time}=order;
-    return res.send(`0;Success;${orderId};${dec2num(money).toFixed(2)};IDR;Recharge;${timestring(time)}`)
+    return res.send(signInquiry({rq_uuid, rs_datetime:rq_datetime, error_code:'0000', error_message:'Success', order_id:orderId, amount:dec2num(money).toFixed(2), ccy:'IDR', trx_date:timestring(time)}))
 })
 var forwardOrder =async function(params, callback) {
 	callback=callback||function(err, r) {
