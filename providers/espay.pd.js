@@ -112,7 +112,7 @@ router.post('/inquiry', bodyParser.urlencoded({extended:true}), async function(r
     var order=await db.bills.findOne({_id:ObjectId(orderId)});
     if (!order) return res.send({rq_uuid, rq_datetime, error_code:'0001', error_message:'Invalid order id'});
     var {money, time}=order;
-    var ret=signInquiry({rq_uuid, rs_datetime:rq_datetime, error_code:'0000', error_message:'Success', order_id:orderId, amount:dec2num(money).toFixed(2), ccy:'IDR', trx_date:timestring(time)});
+    var ret=signInquiry({rq_uuid, rs_datetime:rq_datetime, error_code:'0000', error_message:'Success', order_id:orderId, amount:dec2num(money).toFixed(2), ccy:'IDR', trx_date:yyyymmddtimestring(time)});
     debugout('ret', ret);
     return res.send(ret)
 })
