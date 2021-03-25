@@ -11,10 +11,11 @@ const url = require('url')
 , argv=require('yargs').argv
 , debugout=require('debugout')(argv.debugout)
 , crypto=require('crypto')
+, querystring=require('querystring')
 
 const _noop=function() {};
 
-const signatureKey='jvqvatll76wotamq';
+const signatureKey='jvqvatll76wotamq', Password='E#0KNJB/Y^', apiKey='a7bec7f98f4683a1b75dbc91bbd17079';
 
 exports.bestSell=null;
 exports.getBalance=_noop;
@@ -64,6 +65,18 @@ const signDone=(obj)=>{
     return obj;
 }
 
+var verifyInquirySign=(obj)=>{
+    // Signature Key + rq_uuid + rq_datetime + order_id + INQUIRY
+    var {rq_uuid , rq_datetime , order_id, signature} =obj;
+    var hash=crypto.createHash('sha256');
+    var str=('##'+[signatureKey, rq_uuid, rq_datetime, order_id, 'INQUIRY'].join('##')+'##').toUpperCase();
+    console.log(str);
+    hash.update(str);
+    var sign=hash.digest('hex');
+    console.log(sign);
+    return (signature===sign)
+}
+
 router.all('/return', (req, res)=>{
     res.send('everything is done');
 })
@@ -105,17 +118,41 @@ router.all('/portal', (req, res)=>{
 </script>`
     res.send(content);
 });
-router.post('/inquiry', bodyParser.urlencoded({extended:true}), async function(req, res) {
+// router.post('/inquiry', bodyParser.urlencoded({extended:true}), async function(req, res) {
+//     debugout(req.body);
+//     var {rq_uuid, rq_datetime:rs_datetime, order_id:orderId, password, signature}=req.body;
+//     try {
+//         if (password!==Password) throw 'Invalid password';
+//         if (!verifyInquirySign(req.body)) throw 'Invalid signature';
+//         var {db}=await getDB();
+//         var order=await db.bills.findOne({_id:ObjectId(orderId)});
+//         if (!order) throw 'Invalid order id';
+//         var {money, time}=order;
+//         var ret=signInquiry({rq_uuid, rs_datetime, error_code:'0000', error_message:'Success', order_id:orderId, amount:dec2num(money).toFixed(2), ccy:'IDR', trx_date:yyyymmddtimestring(time)});
+//         debugout('ret', ret);
+//         return res.send(ret)
+//     } catch(e) {
+//         res.send({rq_uuid, rs_datetime, error_code:'0001', error_message:(typeof e==='object'?e.message:e)})
+//     }
+// })
+router.post('/inquiry', bodyParser.text({type:'*/*'}), async function(req, res) {
     debugout(req.body);
-    var {rq_uuid, rq_datetime, order_id:orderId}=req.body;
-    var {db}=await getDB();
-    var order=await db.bills.findOne({_id:ObjectId(orderId)});
-    if (!order) return res.send({rq_uuid, rq_datetime, error_code:'0001', error_message:'Invalid order id'});
-    var {money, time}=order;
-    var ret=signInquiry({rq_uuid, rs_datetime:rq_datetime, error_code:'0000', error_message:'Success', order_id:orderId, amount:dec2num(money).toFixed(2), ccy:'IDR', trx_date:yyyymmddtimestring(time)});
-    debugout('ret', ret);
-    return res.send(ret)
+    var {rq_uuid, rq_datetime:rs_datetime, order_id:orderId, password, signature}=querystring.parse(req.body);
+    try {
+        if (password!==Password) throw 'Invalid password';
+        if (!verifyInquirySign(req.body)) throw 'Invalid signature';
+        var {db}=await getDB();
+        var order=await db.bills.findOne({_id:ObjectId(orderId)});
+        if (!order) throw 'Invalid order id';
+        var {money, time}=order;
+        var ret=signInquiry({rq_uuid, rs_datetime, error_code:'0000', error_message:'Success', order_id:orderId, amount:dec2num(money).toFixed(2), ccy:'IDR', trx_date:yyyymmddtimestring(time)});
+        debugout('ret', ret);
+        return res.send(ret)
+    } catch(e) {
+        res.send({rq_uuid, rs_datetime, error_code:'0001', error_message:(typeof e==='object'?e.message:e)})
+    }
 })
+
 router.post('/settle', bodyParser.urlencoded({extended:true}), function(req, res) {
     res.send({error_code:'0000', error_message:'Success', date_settle:yyyymmddtimestring()})
 })
