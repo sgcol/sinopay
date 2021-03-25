@@ -65,6 +65,7 @@ const signDone=(obj)=>{
 }
 
 router.all('/return', (req, res)=>{
+    res.send('everything is done');
 })
 router.all('/done', bodyParser.urlencoded({extended:true}), async function (req, res) {
     var {rq_uuid, rq_datetime, order_id:orderId, amount:paid, payment_ref:providerOrderId}=req.body;
@@ -82,8 +83,11 @@ router.all('/done', bodyParser.urlencoded({extended:true}), async function (req,
 router.all('/portal', (req, res)=>{
     if (!req.query || !req.query.oid) return res.error('params error');
     var orderId=req.query.oid;
-    var basepath=argv.host||url.format({protocol:req.protocol, host:req.headers.host, pathname:path.resolve(req.baseUrl, '..')});
-    if (basepath.slice(-1)!='/') basepath=basepath+'/';
+    if (!req.query.rb) {
+        var basepath=argv.host||url.format({protocol:req.protocol, host:req.headers.host, pathname:path.resolve(req.baseUrl, '..')});
+        if (basepath.slice(-1)!='/') basepath=basepath+'/';
+        req.query.rb=basepath+'espay/return';
+    }
 
     var content=`<iframe id="sgoplus-iframe" src="" scrolling="no" frameborder="0"></iframe>
 <script type="text/javascript" src="https://sandbox-kit.espay.id/public/signature/js"></script>
@@ -92,7 +96,7 @@ router.all('/portal', (req, res)=>{
         var data = {
             key: "a7bec7f98f4683a1b75dbc91bbd17079",
             paymentId: "${orderId}",
-            backUrl: "${basepath+'done'}"
+            backUrl: "${req.query.rb}"
         },
         sgoPlusIframe = document.getElementById("sgoplus-iframe");
         if (sgoPlusIframe !== null) sgoPlusIframe.src = SGOSignature.getIframeURL(data);
@@ -118,7 +122,7 @@ var forwardOrder =async function(params, callback) {
 		return r;
 	}
 
-    var ret={url:params._host+'pvd/espay/portal?oid='+params.orderId};
+    var ret={url:params._host+'pvd/espay/portal?oid='+params.orderId+'&rb='+params.return_url};
     ret.pay_type=params.type;
     return callback(null, ret);
 }
