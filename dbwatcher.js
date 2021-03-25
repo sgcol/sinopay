@@ -12,12 +12,13 @@ exports.when=function(collectionName, op, handler) {
         handler=op;
         op=null;
     }
+    if (op) op=[{$match:{operationType:op}}];
     (async function _go() {
         var {db}=await getDB();
         var col=db[collectionName];
         if (!col) throw 'no such collection';
         var watched=await db.event_tracer.findOne({_id:collectionName}, {last:1});
-        col.watch(null, {resumeAfter:watched?watched.last:null, fullDocument:'updateLookup'})
+        col.watch(op, {resumeAfter:watched?watched.last:null, fullDocument:'updateLookup'})
         .on('change', async (rec)=>{
             try {
                 await handler(rec);

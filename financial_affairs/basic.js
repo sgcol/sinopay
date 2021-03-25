@@ -11,14 +11,16 @@ const noOrder={ordered:false};
 (async function order_received() {
 	var {db}=await getDB();
 	db_event.when('bills', 'update', async (rec)=>{
-		var {used, money, provider, paidmoney, _id, time, rec_id}=rec.fullDocument;
-		if (used && rec_id==null) {
+		if (rec.updateDescription && rec.updateDescription.updatedFields && rec.updateDescription.updatedFields.used===true) {
+			console.log(rec.updateDescription.updatedFields);
+			var {used, merchantid, money, provider, paidmoney, _id, time, rec_id}=rec.fullDocument;
 			var session=db.mongoClient.startSession();
 			try {
 				await session.withTransaction(async ()=>{
 					var now=time, rec_id=new ObjectId();
 					var op2={account:provider, receivable:num2dec(paidmoney), recharge:num2dec(-paidmoney), time:now, ref_id:_id, op_id:rec_id};
 					await db.outstandingAccounts.insertOne(op2,{session});
+					await db.accounts.insertOne({...op2, account:merchantid}, {session});
 					await db.bills.updateOne({_id:_id}, {$set:{rec_id}}, {session});
 				}, {
 					readPreference: 'primary',
@@ -31,7 +33,7 @@ const noOrder={ordered:false};
 			return true;
 		}
 	})
-	db_event.when('withdrawal', 'update', async (rec)=>{
+	db_event.when('withdrawal', 'insert', async (rec)=>{
 		var {money, merchantid, provider, money, _id, time, rec_id}=rec.fullDocument;
 
 		if (rec_id==null) {
@@ -85,7 +87,11 @@ async function reconciliation(date, providerName) {
 			// balance
 			var prd=allProviders[providerName];
 			if (!prd.getReconciliation) return 'reconciliation is not supported by '+providerName;
+			try {
 			var {received, commission, confirmedOrders, recon_tag, recon_time=end}=await prd.getReconciliation(from,end, forceRecon);
+			} catch(e) {
+				return;
+			}
 			var recon_id=providerName+recon_tag;
 			received=Number(received)||0;
 			commission=Number(commission)||0;
@@ -95,14 +101,20 @@ async function reconciliation(date, providerName) {
 				var {orderId, money} =order;
 				money=Number(money)||0;
 				if (!money) continue;
-				var bill =await db.bills.findOne({_id:ObjectId(orderId)});
+				var {value:bill} =await db.bills.findOneAndUpdate({_id:ObjectId(orderId)}, {$set:{recon_id}});
 				if (!bill) continue;
+				if (bill.recon_id) continue;
 				var {merchantid, _id:ref_id, time, share}=bill;
 				if (time.getDate()!=recon_time.getDate()) time=recon_time;
-				if (!await db.outstandingAccounts.findOne({account:'user', ref_id})) {
-					var rec_id=new ObjectId();
+				var rec_id=new ObjectId();
+				if (!await db.outstandingAccounts.findOne({account:providerName, ref_id})) {
 					db.outstandingAccounts.insertOne(
 						{account:providerName, receivable:num2dec(money), recharge:num2dec(-money), time, ref_id, op_id:rec_id}
+					);
+				}
+				if (!await db.accounts.findOne({account:merchantid, ref_id})) {
+					db.accounts.insertOne(
+						{account:merchantid, receivable:num2dec(money), recharge:num2dec(-money), time, ref_id, op_id:rec_id}
 					);
 				}
 				var ids={ref_id, recon_id, time};

@@ -10,9 +10,9 @@ const url = require('url')
 , midtransClient = require('midtrans-client');
 
 const snap = new midtransClient.Snap({
-	isProduction : false,
-	clientKey : 'SB-Mid-client-pQpp4a2OthNhke9u',
-	serverKey : 'SB-Mid-server-A8jFeygO3j5z6DI6hIHCEo42'
+	isProduction : true,
+	clientKey : 'Mid-client-SZVXxzHX7F5lyjsN',
+	serverKey : 'Mid-server-YvD-5gPsSujBPBKg3RHu2VJH'
 });
 
 const _noop=function() {};
@@ -102,12 +102,8 @@ var forwardOrder =async function(params, callback) {
 	}
 }
 
-var getReconciliation=async function(from, date, forceRecon) {
-	throw 'not impl';
-}
-
 exports.forwardOrder=forwardOrder;
-exports.getReconciliation=getReconciliation;
+
 exports.withdrawal =async function withdrawal(orderId, account, money) {
 	throw 'not impl'
 }

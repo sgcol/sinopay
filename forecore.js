@@ -35,8 +35,8 @@ function start(err, db) {
 	if (err) return console.error(err);
 
 	//currecny defined at https://intlmapi.alipay.com/gateway.do?service=forex_rate_file&sign_type=MD5&partner=2088921303608372&sign=75097bd6553e1e94aabc6e47b54ec42e, uppercase
-	router.all('/order', verifyMchSign, err_h, httpf({partnerId:'?string', merchantId:'?string', userId:'string', outOrderId:'string', money:'number', currency:'string', cb_url:'string', return_url:'?string', callback:true}, 
-	async function(partnerId, merchantId, mchuserid, outOrderId, money, currency, cb_url, return_url, callback){
+	router.all('/order', verifyMchSign, err_h, httpf({partnerId:'?string', merchantId:'?string', userId:'string', outOrderId:'string', money:'number', currency:'string', provider:'?string', cb_url:'string', return_url:'?string', callback:true}, 
+	async function(partnerId, merchantId, mchuserid, outOrderId, money, currency, providerName, cb_url, return_url, callback){
 		// var userId=partnerId||merchantId;
 		// if (!sign) return callback('sign must be set');
 		// if (!userId) return callback('partnerId or merchantId must be set');
@@ -47,9 +47,13 @@ function start(err, db) {
 		if (money==0) return callback('金额异常，能不为0');
 
 		var params ={...this.req.params, ...this.req.body};
-		
+		var isDuplicatedOutOrderId=await db.bills.findOne({merchantOrderId:params.outOrderId}, {projection:{_id:1}});
+		if (isDuplicatedOutOrderId) return callback('订单重复');
+
 		var merchant =this.req.merchant;
-		var provider=await bestProvider(money, merchant, {forecoreOnly:true, currency:currency});
+		var provider;
+		if (providerName) provider=getProvider(providerName);
+		else provider=await bestProvider(money, merchant, {forecoreOnly:true, currency:currency});
 		
 		var req=this.req;
 		var basepath=argv.host||url.format({protocol:req.protocol, host:req.headers.host, pathname:path.resolve(req.baseUrl, '..')});

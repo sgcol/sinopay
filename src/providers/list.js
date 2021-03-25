@@ -10,7 +10,7 @@ export default props => (
 			<TextField source="name" />
 			<BooleanField source="forecore" label="四方"/>
 			<BooleanField source="withdrawal" label="支持提款"/>
-			<BooleanField source="reconciliation" label="支持对账"/>
+			<BooleanField source="reconciliation" label="自动对账"/>
 			<ArrayField source="supportedMethods" label="支付方式">
 				<SingleFieldList>
 					<ChipField />
