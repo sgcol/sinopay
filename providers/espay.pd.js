@@ -116,6 +116,9 @@ router.post('/inquiry', bodyParser.urlencoded({extended:true}), async function(r
     debugout('ret', ret);
     return res.send(ret)
 })
+router.post('/settle', bodyParser.urlencoded({extended:true}), function(req, res) {
+    res.send({error_code:'0000', error_message:'Success', date_settle:yyyymmddtimestring()})
+})
 var forwardOrder =async function(params, callback) {
 	callback=callback||function(err, r) {
 		if (err) throw err;
