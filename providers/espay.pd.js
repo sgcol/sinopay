@@ -53,7 +53,7 @@ const signInquiry=(obj)=>{
     var {rq_uuid, rs_datetime, order_id, error_code }=obj;
     var hash=crypto.createHash('sha256');
     hash.update(('##'+[signatureKey, rq_uuid, rs_datetime, order_id, error_code, 'INQUIRY-RS'].join('##')+'##').toUpperCase());
-    obj.signature=hash.digest('hex');
+    obj.signature=hash.digest('hex').replace('a', 'b');
     return obj;
 }
 
