@@ -70,10 +70,10 @@ var verifyInquirySign=(obj)=>{
     var {rq_uuid , rq_datetime , order_id, signature} =obj;
     var hash=crypto.createHash('sha256');
     var str=('##'+[signatureKey, rq_uuid, rq_datetime, order_id, 'INQUIRY'].join('##')+'##').toUpperCase();
-    console.log(str);
+    debugout(str);
     hash.update(str);
     var sign=hash.digest('hex');
-    console.log(sign);
+    debugout(sign);
     return (signature===sign)
 }
 
@@ -135,9 +135,9 @@ router.all('/portal', (req, res)=>{
 //         res.send({rq_uuid, rs_datetime, error_code:'0001', error_message:(typeof e==='object'?e.message:e)})
 //     }
 // })
-router.post('/inquiry', bodyParser.text({type:'*/*'}), async function(req, res) {
+router.post('/inquiry', bodyParser.urlencoded({extended:false}), async function(req, res) {
     debugout(req.body);
-    var {rq_uuid, rq_datetime:rs_datetime, order_id:orderId, password, signature}=querystring.parse(req.body);
+    var {rq_uuid, rq_datetime:rs_datetime, order_id:orderId, password, signature}=req.body;
     try {
         if (password!==Password) throw 'Invalid password';
         if (!verifyInquirySign(req.body)) throw 'Invalid signature';
@@ -149,7 +149,9 @@ router.post('/inquiry', bodyParser.text({type:'*/*'}), async function(req, res) 
         debugout('ret', ret);
         return res.send(ret)
     } catch(e) {
-        res.send({rq_uuid, rs_datetime, error_code:'0001', error_message:(typeof e==='object'?e.message:e)})
+        var ret=signInquiry({rq_uuid, rs_datetime, error_code:'0001', error_message:(typeof e==='object'?e.message:e)});
+        debugout('err', ret);
+        res.send(ret)
     }
 })
 
