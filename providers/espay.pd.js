@@ -53,7 +53,7 @@ const signInquiry=(obj)=>{
     var {rq_uuid, rs_datetime, order_id, error_code }=obj;
     var hash=crypto.createHash('sha256');
     hash.update(('##'+[signatureKey, rq_uuid, rs_datetime, order_id, error_code, 'INQUIRY-RS'].join('##')+'##').toUpperCase());
-    obj.signature=hash.digest('hex').replace('a', 'b');
+    obj.signature=hash.digest('hex');
     return obj;
 }
 
@@ -77,19 +77,34 @@ var verifyInquirySign=(obj)=>{
     return (signature===sign)
 }
 
+const verifyDoneSign=(obj)=>{
+    // Signature Key + rq_uuid + rq_datetime + order_id + amount + PAYMENTREPORT
+    var {rq_uuid , rq_datetime , order_id, amount, signature} =obj;
+    var hash=crypto.createHash('sha256');
+    var str=('##'+[signatureKey, rq_uuid, rq_datetime, order_id, amount, 'PAYMENTREPORT'].join('##')+'##').toUpperCase();
+    debugout(str);
+    hash.update(str);
+    var sign=hash.digest('hex');
+    debugout(sign);
+    return (signature===sign)
+}
+
 router.all('/return', (req, res)=>{
     res.send('everything is done');
 })
 router.all('/done', bodyParser.urlencoded({extended:true}), async function (req, res) {
-    var {rq_uuid, rq_datetime, order_id:orderId, amount:paid, payment_ref:providerOrderId}=req.body;
+    var {rq_uuid, rq_datetime, order_id:orderId, amount:paid, payment_ref:providerOrderId, Password}=req.body;
     paid=Number(paid);
     try {
+        if (password!==Password) throw 'Invalid password';
+        if (!verifyDoneSign(req.body)) throw 'Invalid signature';
         var {db}=await getDB();
         var {matchedCount}=await db.bills.updateOne({_id:ObjectId(orderId)}, {$set:{providerOrderId}}, {w:1});
         if (matchedCount==0) throw 'Invalid order id';
         await confirmOrder(orderId, paid);
         return res.send(signDone({rq_uuid, rs_datetime:rq_datetime, order_id:orderId, error_code:'0000', error_message:'Success', reconcile_id:orderId, reconcile_datetime:yyyymmddtimestring()}));
     } catch(e) {
+        if (e=='used order') e='double payment';
         return res.send(signDone({rq_uuid, rs_datetime:rq_datetime, error_code:'0001', error_message:typeof e==='object'?e.message:e}));
     }
 });
