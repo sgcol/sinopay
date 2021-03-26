@@ -81,7 +81,7 @@ const verifyDoneSign=(obj)=>{
     // Signature Key + rq_uuid + rq_datetime + order_id + amount + PAYMENTREPORT
     var {rq_uuid , rq_datetime , order_id, amount, signature} =obj;
     var hash=crypto.createHash('sha256');
-    var str=('##'+[signatureKey, rq_uuid, rq_datetime, order_id, amount, 'PAYMENTREPORT'].join('##')+'##').toUpperCase();
+    var str=('##'+[signatureKey, rq_datetime, order_id, amount, 'PAYMENTREPORT'].join('##')+'##').toUpperCase();
     debugout(str);
     hash.update(str);
     var sign=hash.digest('hex');
