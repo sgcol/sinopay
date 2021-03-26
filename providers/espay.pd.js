@@ -122,7 +122,7 @@ router.all('/portal', (req, res)=>{
 <script type="text/javascript">
     window.onload = function() {
         var data = {
-            key: "a7bec7f98f4683a1b75dbc91bbd17079",
+            key: "${apiKey}",
             paymentId: "${orderId}",
             backUrl: "${req.query.rb}"
         },
