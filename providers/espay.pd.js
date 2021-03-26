@@ -12,7 +12,6 @@ const url = require('url')
 , debugout=require('debugout')(argv.debugout)
 , crypto=require('crypto')
 , querystring=require('querystring')
-, argv=require('yargs').argv;
 
 const _noop=function() {};
 
