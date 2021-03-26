@@ -1,11 +1,12 @@
-import React, { useState, useEffect,useCallback } from "react";
-import { Drawer } from '@material-ui/core';
+import React, { useState, useEffect,useCallback, useResourceContext } from "react";
+import { Drawer, Typography, makeStyles } from '@material-ui/core';
+import InboxIcon from '@material-ui/icons/Inbox';
 import { 
 	List, Datagrid, TextField, BooleanField, NumberField, EditButton, ShowButton,
 	Edit, Create, TabbedForm, FormTab, TextInput, BooleanInput, SelectInput, ReferenceField, NumberInput,
 	Show, SimpleShowLayout,
 	Loading, Error,
-	useDataProvider, useGetMany,
+	useDataProvider, useGetMany,useListContext, useTranslate, useRefresh,
 	TopToolbar, CreateButton, SaveButton, Toolbar,
 	FormDataConsumer
 } from 'react-admin';
@@ -74,7 +75,7 @@ const Providers=({contents, ...props}) => {
 			<FormDataConsumer>
 				{
 					({formData, ...rest})=>{
-						if (formData.providers[prd.id].enabled) {
+						if (enable) {
 							var eles=[];
 							if (prd.options) {
 								prd.options.forEach((opt)=>{
@@ -136,11 +137,15 @@ function CreateAndEditView(method, props) {
 		else return null;
 	}
 
-	return (<TabbedForm toolbar={<PostToolbar />}>
+	var toolbar;
+	if (method==='Create') toolbar=<PostToolbar acl="merchant"/>
+	else toolbar=<PostToolbar />
+	return (<TabbedForm toolbar={toolbar}>
 			<FormTab label="General">
 				<TextInput source="name" label="显示名"/>
 				<LoginName source="id" label="登录名"/>
 				<TextInput source="pwd" label="密码" type="password"/>
+				<input name="acl" hidden value="merchant"></input>
 				<BooleanInput source="debugMode" />
 				<NumberInput source="share" defaultValue={3} options={{ minimumFractionDigits: 2, maximumFractionDigits: 2}}/>
 				<SelectInput source="parent" choices={agents}/>
@@ -173,17 +178,59 @@ export const UserShow =props=> (
 	</Show>
 )
 
-const DebugField =(props)=>{
-	console.log(props);
-	return <TextField {...props} />
-}
+const useStyles = makeStyles(
+    theme => ({
+        message: {
+            textAlign: 'center',
+            opacity: theme.palette.type === 'light' ? 0.5 : 0.8,
+            margin: '0 1em',
+            color:
+                theme.palette.type === 'light'
+                    ? 'inherit'
+                    : theme.palette.text.primary,
+        },
+        icon: {
+            width: '9em',
+            height: '9em',
+        },
+        toolbar: {
+            textAlign: 'center',
+            marginTop: '2em',
+        },
+    }),
+    { name: 'RaEmpty' }
+);
+
+const Empty = props => {
+    const { basePath } = useListContext(props);
+    const classes = useStyles(props);
+    const translate = useTranslate();
+
+    return (
+        <>
+            <div className={classes.message}>
+                <InboxIcon className={classes.icon} />
+                <Typography variant="h4" paragraph>
+                    {translate(`No partners yet`)}
+                </Typography>
+				<Typography variant="body1">
+					{translate(``)}
+				</Typography>
+            </div>
+			<div className={classes.toolbar}>
+				<CreateButton variant="contained" basePath={basePath} />
+			</div>
+        </>
+    );
+};
+
 class UserList extends React.Component {
 	render() {
 		const props  = this.props;
 		
 		return (
 			<React.Fragment>
-				<List {...props} filter={{ acl:'merchant' }} exporter={false} title="商户" actions={<UserListActions />}>
+				<List {...props} filter={{ acl:'merchant' }} exporter={false} title="商户" actions={<UserListActions />} empty={<Empty />}>
 					<Datagrid rowClick="show">
 						<TextField source="name" label="显示名"/>
 						<EscapedTextField source="id" label="登录名"/>

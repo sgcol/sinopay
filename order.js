@@ -84,7 +84,7 @@ function getOrderDetail(orderid, callback) {
 async function confirmOrder(orderid, recieved) {
 	var testMode=false;
 	var {db}=await getDB(), _id=ObjectID(orderid);
-	var bill=await db.bills.finOne({_id});
+	var bill=await db.bills.findOne({_id});
 	if (!bill) throw 'no such orderid';
 
 	// const session=db.mongoClient.startSession(), 
@@ -93,7 +93,7 @@ async function confirmOrder(orderid, recieved) {
 	// 		writeConcern: { w: 'majority' }
 	// 	}
 	async function getItDone() {
-		var {value:r}=await db.bills.findOneAndUpdate({_id, used:{$ne:true}}, {$set:{used:true, status:'通知商户', paidmoney:recieved, lasttime:new Date()}}, {session})
+		var {value:r}=await db.bills.findOneAndUpdate({_id, used:{$ne:true}}, {$set:{used:true, status:'通知商户', paidmoney:recieved, lasttime:new Date()}})
 		if (!r) throw ('used order');
 		// bill.paidmoney=received;
 		// get

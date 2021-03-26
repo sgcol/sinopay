@@ -57,7 +57,7 @@ function dec2num(dec) {
 	function decimalfy(o) {
 		for (var k in o) {
 			if (typeof o[k]=='number') o[k]=Decimal128.fromString(''+o[k]);
-			if (typeof o[k]=='object') {
+			if (o[k]!==null && typeof o[k]=='object') {
 				if (o[k]._bsontype) continue;
 				decimalfy(o[k]);
 			}
