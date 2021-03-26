@@ -69,7 +69,7 @@ var verifyInquirySign=(obj)=>{
     // Signature Key + rq_uuid + rq_datetime + order_id + INQUIRY
     var {rq_uuid , rq_datetime , order_id, signature} =obj;
     var hash=crypto.createHash('sha256');
-    var str=('##'+[signatureKey, rq_uuid, rq_datetime, order_id, 'INQUIRY'].join('##')+'##').toUpperCase();
+    var str=('##'+[signatureKey, rq_datetime, order_id, 'INQUIRY'].join('##')+'##').toUpperCase();
     debugout(str);
     hash.update(str);
     var sign=hash.digest('hex');
