@@ -36,6 +36,10 @@ module.exports={
 					else filters.time={'$lte':new Date(filters.endTime)}
 					delete filters.endTime;
 				}
+				if (filters.unsettled!=null) {
+					if (filters.unsettled) filters.recon_id=null;
+					delete filters.unsettled;
+				}
 			} catch(e) {
 				filter={_id:{$ne:'btf_lock'}}
 			}
