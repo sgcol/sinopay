@@ -146,6 +146,38 @@ function start(err, db) {
 			callback(null, result);
 		} catch(e) {callback(e)}
 	}));
+	router.all('/disburse', verifyMchSign, err_h, httpf({partnerId:'string', outOrderId:'string', money:'number', bank:'string', branch:'?string', owner:'string', account:'string', callback:true}, 
+	async function(partnerId, outOrderId, money, bank, branch, owner, account,callback) {
+		try {
+			var order=await db.withdrawal.findOneAndUpdate({merchantOrderId:outOrderId}, {$setOnInsert:
+			{
+				merchantOrderId:outOrderId
+				, parnterId:partnerId
+				, userid:merchant._id
+				, merchantid:merchant.merchantid
+				, merchantName:merchant.name
+				, provider:provider.name||provider.internal_name
+				, providerOrderId:''
+				, money:money
+				, payout:-1
+				, currency: currency
+				, type: params.type
+				, time:new Date()
+				, lasttime:new Date()
+				, lasterr:''
+			}});
+			if (!order) return callback('无此订单');
+			if (order.merchantid!=partnerId) return callback('该订单不属于指定的partner');
+			if (!order.provider || !order.paidmoney) return callback('订单尚未支付');
+			var pvd=getProvider(order.provider);
+			if (!pvd) return callback('订单尚未支付');
+			if (!pvd.refund) return callback('提供方不支持退单');
+			var merchant=await db.users.findOne({_id:partnerId});
+			var result=await pvd.refund(order, money, merchant);
+			// await db.bills.updateOne({_id:order._id}, {$set:{status:'refund'}}, {w:1});
+			callback(null, result);
+		} catch(e) {callback(e)}
+	}));
 	router.all('/settlements', verifyAuth, httpf({from:'?date', to:'?date', sort:'?string', order:'?string', offset:'?number', limit:'?number', callback:true}, 
 	async function(from, to, sort, order, offset, limit, callback) {
 		try {
