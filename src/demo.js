@@ -8,6 +8,7 @@ import md5 from 'md5';
 import Qs from 'querystring';
 import url from 'url';
 import sortObj from 'sort-object';
+import MonetizationOnIcon from '@material-ui/icons/MonetizationOn';
 
 const Go=({providers, users})=>{
     var {values}=useFormState();
@@ -15,7 +16,7 @@ const Go=({providers, users})=>{
 
     return (
         <Toolbar>
-            <Button variant="contained" label="Jump to the recharge page" onClick={()=>{
+            <Button variant="contained" size="medium" label="Recharge" onClick={()=>{
                 console.log(values);
                 var partner=users.find(u=>u.id==values.partner);
                 if (!partner) return notify('no such partner', 'error');
@@ -46,7 +47,7 @@ const Go=({providers, users})=>{
                     window.location.href=url;
                 })
                 .catch((e)=>notify(e.message, 'warning'))
-            }}/>
+            }}><MonetizationOnIcon /></Button>
         </Toolbar>
     )
 }
