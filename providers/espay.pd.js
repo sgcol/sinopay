@@ -93,6 +93,7 @@ router.all('/return', (req, res)=>{
     res.send('everything is done');
 })
 router.all('/done', bodyParser.urlencoded({extended:true}), async function (req, res) {
+    debugout(req.body);
     var {rq_uuid, rq_datetime, order_id:orderId, amount:paid, payment_ref:providerOrderId, Password}=req.body;
     paid=Number(paid);
     try {
@@ -102,10 +103,12 @@ router.all('/done', bodyParser.urlencoded({extended:true}), async function (req,
         var {matchedCount}=await db.bills.updateOne({_id:ObjectId(orderId)}, {$set:{providerOrderId}}, {w:1});
         if (matchedCount==0) throw 'Invalid order id';
         await confirmOrder(orderId, paid);
-        return res.send(signDone({rq_uuid, rs_datetime:rq_datetime, order_id:orderId, error_code:'0000', error_message:'Success', reconcile_id:orderId, reconcile_datetime:yyyymmddtimestring()}));
+        var ret=signDone({rq_uuid, rs_datetime:rq_datetime, order_id:orderId, error_code:'0000', error_message:'Success', reconcile_id:orderId, reconcile_datetime:yyyymmddtimestring()});
+        return res.send(ret);
     } catch(e) {
         if (e=='used order') e='double payment';
-        return res.send(signDone({rq_uuid, rs_datetime:rq_datetime, error_code:'0001', error_message:typeof e==='object'?e.message:e}));
+        var ret=signDone({rq_uuid, rs_datetime:rq_datetime, error_code:'0001', error_message:typeof e==='object'?e.message:e});
+        return res.send(ret);
     }
 });
 router.all('/portal', (req, res)=>{
