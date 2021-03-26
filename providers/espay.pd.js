@@ -104,10 +104,12 @@ router.all('/done', bodyParser.urlencoded({extended:true}), async function (req,
         if (matchedCount==0) throw 'Invalid order id';
         await confirmOrder(orderId, paid);
         var ret=signDone({rq_uuid, rs_datetime:rq_datetime, order_id:orderId, error_code:'0000', error_message:'Success', reconcile_id:orderId, reconcile_datetime:yyyymmddtimestring()});
+        debugout(ret);
         return res.send(ret);
     } catch(e) {
         if (e=='used order') e='double payment';
         var ret=signDone({rq_uuid, rs_datetime:rq_datetime, error_code:'0001', error_message:typeof e==='object'?e.message:e});
+        debugout(ret);
         return res.send(ret);
     }
 });
