@@ -12,10 +12,9 @@ import Statements from './statements';
 import createAuth from './auth';
 import financial from './financial';
 import DashbaordPage from './dashboard';
-import Demo from './demo';
 
 //icons
-import {AccountTree, BusinessCenter, SupervisorAccount, Apartment, Storefront, Receipt, Dashboard,Assessment,SportsMotorsports} from '@material-ui/icons';
+import {AccountTree, BusinessCenter, SupervisorAccount, Apartment, Storefront, Receipt, Dashboard,Assessment} from '@material-ui/icons';
 var location=window.location, start_params=new URLSearchParams(location.search), spec_server=start_params.get('server');
 var apiUrl;
 if (spec_server) {
@@ -35,9 +34,8 @@ const App = () => (
 					<Resource key="managers" name="managers" icon={SupervisorAccount} {...Managers} options={{label:'Administrators', menuParent:'userManager'}}/>,
 					<Resource key="users" name="users" icon={Storefront} {...Users}  options={{label:'Partners', menuParent:'userManager'}}/>,
 					// <Resource key="agents" name="agents" icon={Apartment} {...Agents} options={{label:'代理', menuParent:'userManager'}}/>,
-				<Resource key="providers" name="providers" icon={SportsMotorsports} {...Providers} options={{label:'Providers'}}/>,
+				<Resource key="providers" name="providers" icon={BusinessCenter} {...Providers} options={{label:'Providers'}}/>,
 				<Resource key="financial_recon" name="recon" icon={BusinessCenter} {...financial.Recon} options={{label:'Reconcilitions'}}/>,
-				<Resource key="financial_recon_manual" name="recon_manual" icon={BusinessCenter} {...financial.ReconManual} options={{label:'Manual Reconcilition'}}/>,
 				])
 			} else {
 				ret.push((
@@ -47,7 +45,6 @@ const App = () => (
 			ret.push(<Resource key="bills" name="bills" icon={Receipt} {...Bills} options={{label:'Transactions'}}/>);
 			ret.push(<Resource key="statements" name="statements" icon={Assessment} {...Statements} options={{label:'Billings'}}/>);
 			ret.push(<Resource key="docs" name="docs" {...Docs} options={{label:'Integrations'}} />);
-			ret.push(<Resource key="demo" name="demo" {...Demo} options={{label:'Demo'}} />);
 			return ret;
 		}}
 	</Admin>

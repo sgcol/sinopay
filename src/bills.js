@@ -96,7 +96,7 @@ export const BillList = ({permissions, ...props}) => {
 				<TextField source="currency"/>
 				<DateTimeField source="time" label="创建时间"/>
 				<TextField source="status" />
-				<OptionButtons permissions={permissions} alwaysOn={true}/>
+				<OptionButtons permissions={permissions}/>
 			</ExtendedDatagrid>
 		</List>
 	);

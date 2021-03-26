@@ -138,7 +138,7 @@ export const Datagrid = React.forwardRef((props, ref) => {
         if (ids[0]==null) return children;
         var sample=data[ids[0]];
         for (var i=1; i<ids.length; i++) sample={...sample, ...data[ids[i]]};
-        return Children.toArray(children).filter(field=>(field.props.alwaysOn || sample.hasOwnProperty(field.props.source)));
+        return Children.toArray(children).filter(field=>sample.hasOwnProperty(field.props.source));
     })();
 
     /**
