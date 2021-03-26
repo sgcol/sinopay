@@ -94,7 +94,7 @@ router.all('/return', (req, res)=>{
 })
 router.all('/done', bodyParser.urlencoded({extended:true}), async function (req, res) {
     debugout(req.body);
-    var {rq_uuid, rq_datetime, order_id:orderId, amount:paid, payment_ref:providerOrderId, Password}=req.body;
+    var {rq_uuid, rq_datetime, order_id:orderId, amount:paid, payment_ref:providerOrderId, password}=req.body;
     paid=Number(paid);
     try {
         if (password!==Password) throw 'Invalid password';
