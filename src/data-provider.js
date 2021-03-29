@@ -55,6 +55,7 @@ function id2_id(obj) {
 function myFetchJson(url, options) {
     options=options||{};
     if (options.headers) {
+        if (!(options.headers instanceof Headers)) options.headers=new Headers(options.headers)
         options.headers.set('accToken', localStorage.getItem('accToken'));
     } else {
         options.headers=new Headers({

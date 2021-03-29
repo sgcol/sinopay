@@ -30,7 +30,8 @@ const SaveWithNoteButton = ({ handleSubmitWithRedirect, acl, ...props }) => {
 				form.change('pwd', undefined);
 			}
 
-			form.change('share', Number((1-Number(formdata.share)/100).toFixed(4)))
+			// form.change('share', Number((1-Number(formdata.share)/100).toFixed(4)))
+			form.change('mdr', Number(Number(formdata.mdr)/100).toFixed(4))
 
 			if (acl) form.change('acl', acl)
 
@@ -147,7 +148,8 @@ function CreateAndEditView(method, props) {
 				<TextInput source="pwd" label="密码" type="password"/>
 				<input name="acl" hidden value="merchant"></input>
 				<BooleanInput source="debugMode" />
-				<NumberInput source="share" defaultValue={3} options={{ minimumFractionDigits: 2, maximumFractionDigits: 2}}/>
+				<NumberInput source="mdr" defaultValue={3} min={0} max={100} step={0.1} options={{ minimumFractionDigits: 2, maximumFractionDigits: 2}}/>
+				<NumberInput source="fix_fee" defaultValue={0} options={{ minimumFractionDigits: 2, maximumFractionDigits: 2}}/>
 				<SelectInput source="parent" choices={agents}/>
 			</FormTab>
 			<FormTab label="Providers">

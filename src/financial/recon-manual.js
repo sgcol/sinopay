@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Form, Label} from 'react-final-form';
-import {Box, Card as MuiCard, CardContent, withStyles} from '@material-ui/core';
+import {Box, Card as MuiCard, CardContent, withStyles, Dialog, DialogTitle, Button as MuiButton} from '@material-ui/core';
 import {DoneAll, CloudUpload,SportsMotorsports} from '@material-ui/icons';
 import { makeStyles } from '@material-ui/core/styles';
 import { 
@@ -10,9 +10,10 @@ import {
 	FormDataConsumer, SimpleForm,
 	useNotify, useDataProvider, useRedirect, useRefresh, 
 	sanitizeListRestProps,
-    Filter, FilterList, FilterListItem, FilterLiveSearch, TextInput, DateTimeInput,
+	Filter, FilterList, FilterListItem, FilterLiveSearch, TextInput, DateTimeInput, FileInput, FileField, 
 } from 'react-admin';
 import {ExtendedDatagrid, DateTimeField} from '../extends'
+import classnames from 'classnames';
 import {fetchApi} from '../data-provider';
 
 const _noop=()=>{}
@@ -23,11 +24,61 @@ const useStyles = makeStyles({
   },
 });
 
+const UploadDialogToolbar =(props)=>{
+	const {className,variant = 'contained', disabled, }=props;
+	const classes = useStyles(props);
+
+	return (
+		<Toolbar {...props}>
+		<FormDataConsumer>
+		{({formData, ...rest})=>(
+			<MuiButton className={classnames(classes.button, className)} varirant={variant} disabled={disabled} type="button"
+				onClick={()=>{
+					const fmdt = new FormData();
+					fmdt.append(
+						"settlement",
+						formData.file.rawFile,
+						formData.file.title
+					);
+					fetchApi('recon/upload', {
+						method:'POST',
+						headers:{'Content-Type':'multipart/form-data'},
+						body:formData.file.rawFile
+					})
+				}}
+			>
+				<CloudUpload
+                    size={18}
+                    thickness={2}
+                    className={classes.leftIcon}
+                />Upload
+			</MuiButton>
+		)}
+		</FormDataConsumer>
+		</Toolbar>
+	)
+}
+const UploadDialog=({onClose, selectedValue, open, ...rest})=>{
+	console.log(open);
+	if (!open) return null;
+	return (
+		<Dialog onClose={onClose} aria-labelledby="upload-dialog" open={open}>
+			<DialogTitle id="upload-dialog">Select settlement file</DialogTitle>
+			<SimpleForm handleSubmit={_noop} toolbar={<UploadDialogToolbar />}>
+				<FileInput source="file">
+					<FileField source="src" title="title" />
+				</FileInput>
+			</SimpleForm>
+		</Dialog>
+	)
+}
+
 const ReconActions = (props) => {
 	const {
 		className,
 		...rest
 	} = props;
+	const [open, setOpen]=useState();
 	// const dp=useDataProvider();
 	// const [providers, setProviders] =useState();
 
@@ -47,15 +98,25 @@ const ReconActions = (props) => {
 
 	// var choices=[{id:null, name:'All'}];
 	// if (providers) choices=choices.concat(providers);
+
+	const openUpload=()=>{
+		// console.log('clicked')
+		setOpen(true);
+	}
+	const closeUpload=()=>setOpen(false);
+
 	return (
+		<>
+		<UploadDialog open={open} onClose={closeUpload} />
 		<TopToolbar className={className} {...sanitizeListRestProps(rest)}>
-            <Button onClick={_noop} label="UPLOAD"><CloudUpload /></Button>
-            <Button onClick={_noop} label="BATCH"><DoneAll /></Button>
+			<Button label="upload" onClick={openUpload}><CloudUpload /></Button>
+			<Button onClick={_noop} label="batch"><DoneAll /></Button>
 		</TopToolbar>
+		</>
 	);
 };
 const PostBulkActionButtons = props => (
-    <Button label="Settlement"><DoneAll/></Button>
+	<Button label="Settlement"><DoneAll/></Button>
 );
 const ProviderFilter =props=>{
 	const dp=useDataProvider();
@@ -72,64 +133,64 @@ const ProviderFilter =props=>{
 		})
 	}, []);
 
-    var choices=[];
+	var choices=[];
 	if (providers) choices=choices.concat(providers);
 
 	return (
-    <FilterList label="Providers" icon={<SportsMotorsports />}>
-        {
-            choices.map(item=>(
-                <FilterListItem label={item.name} value={{provider:item.id}} />
-            ))
-        }
-    </FilterList>)
+	<FilterList label="Providers" icon={<SportsMotorsports />}>
+		{
+			choices.map(item=>(
+				<FilterListItem label={item.name} value={{provider:item.id}} />
+			))
+		}
+	</FilterList>)
 }
 
 const HasReconId =props=>(
-    <FilterList label="unsettled Only" icon={<DoneAll />}>
-        <FilterListItem label='Yes' value={{unsettled:true}} />
-        <FilterListItem label='No' value={{unsettled:false}} />
-    </FilterList>)
+	<FilterList label="unsettled Only" icon={<DoneAll />}>
+		<FilterListItem label='Yes' value={{unsettled:true}} />
+		<FilterListItem label='No' value={{unsettled:false}} />
+	</FilterList>)
 
 const Card = withStyles(theme => ({
-    root: {
-        [theme.breakpoints.up('sm')]: {
-            order: -1, // display on the left rather than on the right of the list
-            width: '15em',
-            marginRight: '1em',
-        },
-        [theme.breakpoints.down('sm')]: {
-            display: 'none',
-        },
-    },
+	root: {
+		[theme.breakpoints.up('sm')]: {
+			order: -1, // display on the left rather than on the right of the list
+			width: '15em',
+			marginRight: '1em',
+		},
+		[theme.breakpoints.down('sm')]: {
+			display: 'none',
+		},
+	},
 }))(MuiCard);
 
 const FilterSidebar = () => (
-    <Card>
-        <CardContent>
-            <FilterLiveSearch source="id" />
-            <ProviderFilter />
-            <HasReconId />
-        </CardContent>
-    </Card>
+	<Card>
+		<CardContent>
+			<FilterLiveSearch source="id" />
+			<ProviderFilter />
+			<HasReconId />
+		</CardContent>
+	</Card>
 );
 
 const Ops=({record, ...rest})=>(
-    record.recon_id?null:<Button label="Settle"></Button>
+	record.recon_id?null:<Button label="Settle"></Button>
 )
 const ReconList = (props) => {
 	return (<List {...props} resource="bills" aside={<FilterSidebar />} filterDefaultValues={{unsettled:true}} actions={<ReconActions />} bulkActionButtons={<PostBulkActionButtons />} exporter={false}  title='人工对账' sort={{ field: 'time', order: 'DESC' }}>
-        <ExtendedDatagrid>
-            <TextField source="id"/>
-            <TextField source="merchantName" label="商户"/>
-            <TextField source="providerOrderId" label="供应商订单"/>
-            <TextField source="provider" label="供应商"/>
-            <NumberField source="money" footerSource="money"/>
-            <TextField source="currency"/>
-            <DateTimeField source="time" label="创建时间"/>
-            <TextField label="对账ID" source="recon_id" alwaysOn={true}/>
-            <Ops alwaysOn={true}/>
-        </ExtendedDatagrid>
+		<ExtendedDatagrid>
+			<TextField source="id"/>
+			<TextField source="merchantName" label="商户"/>
+			<TextField source="providerOrderId" label="供应商订单"/>
+			<TextField source="provider" label="供应商"/>
+			<NumberField source="money" footerSource="money"/>
+			<TextField source="currency"/>
+			<DateTimeField source="time" label="创建时间"/>
+			<TextField label="对账ID" source="recon_id" alwaysOn={true}/>
+			<Ops alwaysOn={true}/>
+		</ExtendedDatagrid>
 	</List>);
 }
 

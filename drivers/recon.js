@@ -3,8 +3,17 @@ const {objectId}=require('./dataDrivers.js')
 	, getDB =require('../db.js')
 	, {reconciliation}=require('../financial_affairs')
 	, {dedecimal, isValidNumber} =require('../etc.js')
+	, router =require('express').Router()
+	, multer =require('multer')
+	, path =require('path')
+	, upload =multer({dest:path.join(__dirname, '../providers/reconciliation/manual')})
 
 const idChanger=objectId;
+router.post('/upload', /*upload.single('settlement'),*/ async (req, res)=>{
+	res.set({'Access-Control-Allow-Origin':'*', 'Cache-Control':'max-age=0'})
+	console.log(req.file, req.body);
+	res.send({});
+});
 module.exports={
 	list: async (params, role, req)=>{
 		var {sort, order, offset, limit} =params;
@@ -35,5 +44,6 @@ module.exports={
 			var {date, provider}=params;
 			return {modified:await reconciliation(new Date(date), provider)};
 		},
-	}
+	},
+	router,
 }

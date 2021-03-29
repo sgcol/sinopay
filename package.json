@@ -25,6 +25,7 @@
     "md5": "^2.3.0",
     "midtrans-client": "^1.2.3",
     "moment": "^2.29.1",
+    "multer": "^1.4.2",
     "neat-csv": "^6.0.1",
     "node-fetch": "^2.6.1",
     "nodejs-file-downloader": "^4.2.0",

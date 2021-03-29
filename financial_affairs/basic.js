@@ -61,6 +61,25 @@ const noOrder={ordered:false};
 	})
 })()
 
+async function handle_profit() {
+	var {db}=getDB();
+	db_event.when('accounts', 'insert', async (rec)=>{
+		console.log(rec);
+		var {account, profit}=rec.fullDocument;
+		if (profit) {
+			var merchant=await db.users.findOne({_id:account});
+			if (!merchant) return;
+			if (!merchant.parent) return;
+			var agent=await db.users.findOne({_id:merchant.parent});
+			var commission=num2dec(Number((profit*agent.share).toFixed(2)))
+			// db.users.updateOne({_id:agent._id}, {$inc:{commission}});
+			db.accounts.insertOne({account:agent._id, balance:num2dec(commission), commission:num2dec(-commission)});
+		}
+	})
+}
+
+handle_profit();
+
 async function reconciliation(date, providerName) {
 	var {db}=await getDB();
 	var forceRecon=false, from, end;
@@ -98,13 +117,13 @@ async function reconciliation(date, providerName) {
 			checked.push({_id:recon_id, account:providerName, received, commission, recon_tag, time:recon_time});
 			var upds=[];
 			for (const order of confirmedOrders) {
-				var {orderId, money} =order;
+				var {orderId, money, fee} =order;
 				money=Number(money)||0;
 				if (!money) continue;
 				var {value:bill} =await db.bills.findOneAndUpdate({_id:ObjectId(orderId)}, {$set:{recon_id}});
 				if (!bill) continue;
 				if (bill.recon_id) continue;
-				var {merchantid, _id:ref_id, time, share}=bill;
+				var {merchantid, _id:ref_id, time, share, mdr, fix_fee=0}=bill;
 				if (time.getDate()!=recon_time.getDate()) time=recon_time;
 				var rec_id=new ObjectId();
 				if (!await db.outstandingAccounts.findOne({account:providerName, ref_id})) {
@@ -118,10 +137,11 @@ async function reconciliation(date, providerName) {
 					);
 				}
 				var ids={ref_id, recon_id, time};
-				var commission=Number((money*(1-share)).toFixed(2));
+				if (!mdr) mdr=1-share;
+				var sys_commission=Number((money*mdr).toFixed(2))+fix_fee;
 				upds.push({updateOne:{
 					filter:{account:merchantid, recon_id}, 
-					update:{$set:{account:merchantid, recharge:num2dec(-money), balance:num2dec(money-commission), commission:num2dec(commission), ...ids}}, 
+					update:{$set:{account:merchantid, recharge:num2dec(-money), balance:num2dec(money-commission), commission:num2dec(sys_commission), profit:num2dec(commission-fee), ...ids}}, 
 					upsert:true}
 				});
 				// merchantIncoming[merchantid]=merchantIncoming[merchantid]||{recharge:0, commission:0};

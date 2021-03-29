@@ -52,7 +52,7 @@ app.use('/pvd/:provider', function (req, res, next) {
 			return res.status(404).send({err:'no such function ' + req.url, detail:arguments}); 
 		});
 	}
-	res.end('pf ' + req.provider + ' not defined');
+	res.end('pvd ' + req.provider + ' not defined');
 });
 
 app.use(crud(dataDrivers));

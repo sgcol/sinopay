@@ -37,6 +37,9 @@ const crud = (
 				router.post(`/${key}/${act}`, verifyAuth, bodyParser.json(), httpc(driver.actions[act]));
 			}
 		}
+		if (driver.router) {
+			router.use(`/${key}`, verifyAuth, driver.router);
+		}
 	}
 	return router
 }
