@@ -94,15 +94,15 @@ router.all('/return', (req, res)=>{
 })
 router.all('/done', bodyParser.urlencoded({extended:true}), async function (req, res) {
     debugout(req.body);
-    var {rq_uuid, rq_datetime, order_id:orderId, amount:paid, payment_ref:providerOrderId, password}=req.body;
-    paid=Number(paid);
+    var {rq_uuid, rq_datetime, order_id:orderId, amount, payment_ref:providerOrderId, password}=req.body;
+    amount=Number(amount);
     try {
         if (password!==Password) throw 'Invalid password';
-        // if (!verifyDoneSign(req.body)) throw 'Invalid signature';
+        if (!verifyDoneSign(req.body)) throw 'Invalid signature';
         var {db}=await getDB();
         var {matchedCount}=await db.bills.updateOne({_id:ObjectId(orderId)}, {$set:{providerOrderId}}, {w:1});
         if (matchedCount==0) throw 'Invalid order id';
-        await confirmOrder(orderId, paid);
+        await confirmOrder(orderId, amount);
         var ret=signDone({rq_uuid, rs_datetime:rq_datetime, order_id:orderId, error_code:'0000', error_message:'Success', reconcile_id:orderId, reconcile_datetime:yyyymmddtimestring()});
         debugout(ret);
         return res.send(ret);

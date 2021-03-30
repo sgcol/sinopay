@@ -113,6 +113,7 @@ async function confirmOrder(orderid, recieved) {
 	// await session.withTransaction(getItDone, opt);
 	// session.endSession();
 	await getItDone();
+	bill.paidmoney=recieved;
 	sysevents.emit('orderConfirmed', bill);
 	notifyMerchant(bill);
 		// var shares=[];
