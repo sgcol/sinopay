@@ -58,6 +58,7 @@ const signInquiry=(obj)=>{
 }
 
 const signDone=(obj)=>{
+    return obj;
     var {rq_uuid, rs_datetime, error_code }=obj;
     var hash=crypto.createHash('sha256');
     hash.update(('##'+[signatureKey, rq_uuid, rs_datetime, error_code, 'PAYMENTREPORT-RS'].join('##')+'##').toUpperCase());
