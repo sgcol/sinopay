@@ -1,0 +1,16 @@
+<form action="/upload" method="post" enctype="multipart/form-data" name="ff">
+    <input type="file" name="settle" ></input>
+    <input type="submit" value="Click">
+</form>
+
+<script>
+    function go() {
+        var form = document.forms.namedItem("ff");
+        form.addEventListener('submit', function(ev) {
+            const fmdt = new FormData(form);
+            fetch('/upload', {method:'post',body:fmdt})
+        }, false)
+    }
+
+    window.onload=go;
+</script>

@@ -11,6 +11,7 @@ import {
 	useNotify, useDataProvider, useRedirect, useRefresh, 
 	sanitizeListRestProps,
 	Filter, FilterList, FilterListItem, FilterLiveSearch, TextInput, DateTimeInput, FileInput, FileField, 
+	Loading, 
 } from 'react-admin';
 import {ExtendedDatagrid, DateTimeField} from '../extends'
 import classnames from 'classnames';
@@ -40,10 +41,10 @@ const UploadDialogToolbar =(props)=>{
 						formData.file.rawFile,
 						formData.file.title
 					);
+					fmdt.append("provider", formData.provider);
 					fetchApi('recon/upload', {
 						method:'POST',
-						headers:{'Content-Type':'multipart/form-data'},
-						body:formData.file.rawFile
+						body:fmdt
 					})
 				}}
 			>
@@ -58,14 +59,14 @@ const UploadDialogToolbar =(props)=>{
 		</Toolbar>
 	)
 }
-const UploadDialog=({onClose, selectedValue, open, ...rest})=>{
-	console.log(open);
+const UploadDialog=({onClose, selectedValue, open, providers, ...rest})=>{
 	if (!open) return null;
 	return (
 		<Dialog onClose={onClose} aria-labelledby="upload-dialog" open={open}>
 			<DialogTitle id="upload-dialog">Select settlement file</DialogTitle>
 			<SimpleForm handleSubmit={_noop} toolbar={<UploadDialogToolbar />}>
-				<FileInput source="file">
+				<SelectInput source="provider" choices={[].concat(providers)} />
+				<FileInput source="file" accept="text/csv">
 					<FileField source="src" title="title" />
 				</FileInput>
 			</SimpleForm>
@@ -76,6 +77,7 @@ const UploadDialog=({onClose, selectedValue, open, ...rest})=>{
 const ReconActions = (props) => {
 	const {
 		className,
+		providers,
 		...rest
 	} = props;
 	const [open, setOpen]=useState();
@@ -107,7 +109,7 @@ const ReconActions = (props) => {
 
 	return (
 		<>
-		<UploadDialog open={open} onClose={closeUpload} />
+		<UploadDialog open={open} onClose={closeUpload} {...props}/>
 		<TopToolbar className={className} {...sanitizeListRestProps(rest)}>
 			<Button label="upload" onClick={openUpload}><CloudUpload /></Button>
 			<Button onClick={_noop} label="batch"><DoneAll /></Button>
@@ -118,21 +120,7 @@ const ReconActions = (props) => {
 const PostBulkActionButtons = props => (
 	<Button label="Settlement"><DoneAll/></Button>
 );
-const ProviderFilter =props=>{
-	const dp=useDataProvider();
-	const [providers, setProviders] =useState();
-
-	const notify=useNotify(); 
-
-	useEffect(()=>{
-		dp.getList('providers')
-		.then(({data})=>{
-			setProviders(data);
-		}).catch((e)=>{
-			notify(e.message, 'warning');
-		})
-	}, []);
-
+const ProviderFilter =({providers})=>{
 	var choices=[];
 	if (providers) choices=choices.concat(providers);
 
@@ -165,12 +153,12 @@ const Card = withStyles(theme => ({
 	},
 }))(MuiCard);
 
-const FilterSidebar = () => (
+const FilterSidebar = (props) => (
 	<Card>
 		<CardContent>
 			<FilterLiveSearch source="id" />
-			<ProviderFilter />
-			<HasReconId />
+			<ProviderFilter {...props}/>
+			<HasReconId {...props}/>
 		</CardContent>
 	</Card>
 );
@@ -179,7 +167,23 @@ const Ops=({record, ...rest})=>(
 	record.recon_id?null:<Button label="Settle"></Button>
 )
 const ReconList = (props) => {
-	return (<List {...props} resource="bills" aside={<FilterSidebar />} filterDefaultValues={{unsettled:true}} actions={<ReconActions />} bulkActionButtons={<PostBulkActionButtons />} exporter={false}  title='人工对账' sort={{ field: 'time', order: 'DESC' }}>
+	const dp=useDataProvider();
+	const [providers, setProviders] =useState();
+
+	const notify=useNotify(); 
+
+	useEffect(()=>{
+		dp.getList('providers')
+		.then(({data})=>{
+			setProviders(data);
+		}).catch((e)=>{
+			notify(e.message, 'warning');
+		})
+	}, []);
+	
+	if (!providers) return <Loading />
+
+	return (<List {...props} resource="bills" aside={<FilterSidebar providers={providers}/>} filterDefaultValues={{unsettled:true}} actions={<ReconActions providers={providers}/>} bulkActionButtons={<PostBulkActionButtons />} exporter={false}  title='人工对账' sort={{ field: 'time', order: 'DESC' }}>
 		<ExtendedDatagrid>
 			<TextField source="id"/>
 			<TextField source="merchantName" label="商户"/>

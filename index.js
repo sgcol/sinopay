@@ -16,6 +16,8 @@ const express =require('express')
 	.describe('host', 'bypass default host for testing alipay notification')
 	.argv
 , debugout=require('debugout')(argv.debugout)
+, multer=require('multer')
+, upload=multer({dest:'./providers/reconciliation/manual'})
 
 require('./financial_affairs');
 
@@ -29,6 +31,10 @@ if (argv.debugout) {
 		next();
 	});
 }
+
+app.post('/upload', upload.single('settle'), function (req, res) {
+	console.log(req.file, req.body);
+})
 
 app.param('provider', function (req, res, next, external_provider) {
 	req.provider = external_provider;

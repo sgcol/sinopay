@@ -80,6 +80,78 @@ async function handle_profit() {
 
 handle_profit();
 
+async function handleReconciliation(reconContent, providerName) {
+	var accountsUpds=[], outstandingAccountsUpds=[], reconcileUpds=[];
+	var {received, commission, confirmedOrders, recon_tag, recon_time=new Date()}=reconContent;
+	var recon_id=providerName+recon_tag;
+	received=Number(received)||0;
+	commission=Number(commission)||0;
+
+	// recociliation logs
+	reconcileUpds.push({updateOne:{
+		filter:{_id:recon_id}, 
+		update:{$set:{account:providerName, received, commission, recon_tag, time:recon_time}}, 
+		upsert:true
+	}});
+	if (received!=0 || commission!=0) {
+		// outstandAccount balance
+		var b=received-commission;
+		outstandingAccountsUpds.push({updateOne:{
+			filter:{account:providerName, ref_id:recon_id}, 
+			update:{$set:{receivable:num2dec(-received), balance:num2dec(b), commission:num2dec(commission), time:recon_time}}
+		}});
+
+		var accChg={};
+		for (const order of confirmedOrders) {
+			var {orderId, money=0, fee=0} =order;
+			money=Number(money);
+			fee=Number(fee);
+			if (!money) continue;
+			// check all confirmedOrder exists
+			var {value:bill} =await db.bills.findOneAndUpdate({_id:ObjectId(orderId)}, {$set:{recon_id}}, {projection:{_id:1, merchantid:1, time:1, share:1, mdr:1, fix_fee:1}});
+			if (!bill) continue; //should yield a notification to the admin a missing bill must be added by manual
+			if (bill.recon_id) continue;
+			var {merchantid, _id:ref_id, time, share, mdr, fix_fee=0}=bill;	 
+			if (time.getDate()!=recon_time.getDate()) time=recon_time;
+			// ensure all confirmed order exists in outstandingAccount & accounts
+			var rec_id=new ObjectId();
+			outstandingAccountsUpds.push({updateOne:{
+				filter:{account:providerName, ref_id},
+				update:{$set:{receivable:num2dec(money), recharge:num2dec(-money), time, op_id:rec_id}},
+				upsert:true
+			}});
+			accountsUpds.push({updateOne:{
+				filter:{account:merchantid, ref_id},
+				update:{$set:{receivable:num2dec(money), recharge:num2dec(-money), time, op_id:rec_id}},
+				upsert:true
+			}});
+
+			if (!accChg[merchantid]) accChg[merchantid]={received:0, commission:0, profit:0, fee:0};
+			var chg=accChg[merchantid];
+			// sum all commissions & profits on 
+			if (!mdr) mdr=1-share;
+			var sys_commission=Number((money*mdr).toFixed(2))+fix_fee;
+			chg.received+=money;
+			chg.commission+=sys_commission;
+			chg.profit+=(sys_commission-fee);
+			chg.fee+=fee;
+		}
+		for (var merchantid in accChg) {
+			var {received, commission, profit, fee}=accChg[merchantid];
+			accountsUpds.push({updateOne:{
+				filter:{account:merchantid, recon_id},
+				update:{$set:decimalfy({receivable:-received, balance:received, profit, fee, time:recon_time})},
+				upsert:true
+			}})
+		}
+	}
+	if (accountsUpds.length) db.accounts.bulkWrite(accountsUpds, noOrder);
+	if (outstandingAccountsUpds.length) db.outstandingAccounts.bulkWrite(outstandingAccountsUpds, noOrder);
+	if (reconcileUpds.length) db.reconciliation.bulkWrite(reconcileUpds, noOrder);
+
+	return reconcileUpds.length;
+}
+
 async function reconciliation(date, providerName) {
 	var {db}=await getDB();
 	var forceRecon=false, from, end;
@@ -99,84 +171,18 @@ async function reconciliation(date, providerName) {
 	var allProviders=providerName?
 		(()=>{var ret={}; ret[providerName]=providerManager.getProvider(providerName); return ret})()
 		:providerManager.getProvider()
-		, checklist=[]
-		, checked=[];//, merchantIncoming={};
+		, updsNum=0;
 	for (const providerName in allProviders) {
-		checklist.push((async ()=>{
-			// balance
-			var prd=allProviders[providerName];
-			if (!prd.getReconciliation) return 'reconciliation is not supported by '+providerName;
-			try {
-			var {received, commission, confirmedOrders, recon_tag, recon_time=end}=await prd.getReconciliation(from,end, forceRecon);
-			} catch(e) {
-				return;
-			}
-			var recon_id=providerName+recon_tag;
-			received=Number(received)||0;
-			commission=Number(commission)||0;
-			checked.push({_id:recon_id, account:providerName, received, commission, recon_tag, time:recon_time});
-			var upds=[];
-			for (const order of confirmedOrders) {
-				var {orderId, money, fee} =order;
-				money=Number(money)||0;
-				if (!money) continue;
-				var {value:bill} =await db.bills.findOneAndUpdate({_id:ObjectId(orderId)}, {$set:{recon_id}});
-				if (!bill) continue;
-				if (bill.recon_id) continue;
-				var {merchantid, _id:ref_id, time, share, mdr, fix_fee=0}=bill;
-				if (time.getDate()!=recon_time.getDate()) time=recon_time;
-				var rec_id=new ObjectId();
-				if (!await db.outstandingAccounts.findOne({account:providerName, ref_id})) {
-					db.outstandingAccounts.insertOne(
-						{account:providerName, receivable:num2dec(money), recharge:num2dec(-money), time, ref_id, op_id:rec_id}
-					);
-				}
-				if (!await db.accounts.findOne({account:merchantid, ref_id})) {
-					db.accounts.insertOne(
-						{account:merchantid, receivable:num2dec(money), recharge:num2dec(-money), time, ref_id, op_id:rec_id}
-					);
-				}
-				var ids={ref_id, recon_id, time};
-				if (!mdr) mdr=1-share;
-				var sys_commission=Number((money*mdr).toFixed(2))+fix_fee;
-				upds.push({updateOne:{
-					filter:{account:merchantid, recon_id}, 
-					update:{$set:{account:merchantid, recharge:num2dec(-money), balance:num2dec(money-commission), commission:num2dec(sys_commission), profit:num2dec(commission-fee), ...ids}}, 
-					upsert:true}
-				});
-				// merchantIncoming[merchantid]=merchantIncoming[merchantid]||{recharge:0, commission:0};
-				// merchantIncoming[merchantid].recharge+=paidmoney;
-				// merchantIncoming[merchantid].commission+=commission;
-			}
-			upds.length && db.accounts.bulkWrite(upds, noOrder);
-		})());
-	}
-	if (checklist.length) {
-		var ret=await Promise.all(checklist);
-		if (checked.length==0) return 0;
-		db.reconciliation.bulkWrite(checked.map(item=>({updateOne:{filter:{_id:item._id}, update:{$set:item}, upsert:true}})), noOrder);
-		// var ops=[];
-		// for (const merchantid in merchantIncoming) {
-		//     ops.push({updateOne:{filter:{_id:recon_id}, update:{account:merchantid, ...merchantIncoming[merchantid], time:end}, upsert:true}})
-		// }
-		// db.statements.bulkWrite(ops, noOrder);
-		var upds=[];
-		for (const checked_item of checked) {
-			var {_id:ref_id, received, commission, account, time}=checked_item;
-			if (received==0 && commission==0) continue;
-			var b=received-commission;
-			upds.push({updateOne:{
-				filter:{account:checked_item.account, ref_id}, 
-				update:{$set:{account, receivable:num2dec(-received), balance:num2dec(b), commission:num2dec(commission), time, ref_id}}, 
-				upsert:true}
-			});
-			// upds.push({updateMany:{filter:{account:checked_item.account, recon_id:null}, update:{$set:{recon_id:checked_item._id}}}})
+		var prd=allProviders[providerName];
+		if (!prd.getReconciliation) return 'reconciliation is not supported by '+providerName;
+		try {
+			var reconContent=await prd.getReconciliation(from,end, forceRecon);
+		} catch(e) {
+			continue;
 		}
-		db.outstandingAccounts.bulkWrite(upds, noOrder);
-
-		return checked.length;
+		updsNum+=await handleReconciliation(reconContent, providerName);
 	}
-	return 0;
+	return updsNum;
 }
 
 setInterval(reconciliation, 30*60*1000);
@@ -194,3 +200,4 @@ exports.getAccountBalance=get.bind(null, 'accounts', 'balance');
 exports.getOutstandingBalance=get.bind(null, 'outstandingAccounts', 'balance');
 exports.getOutstandingReceivable=get.bind(null, 'outstandingAccounts', 'receivable')
 exports.reconciliation=reconciliation;
+exports.handleReconciliation=handleReconciliation;

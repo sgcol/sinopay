@@ -3,16 +3,54 @@ const {objectId}=require('./dataDrivers.js')
 	, getDB =require('../db.js')
 	, {reconciliation}=require('../financial_affairs')
 	, {dedecimal, isValidNumber} =require('../etc.js')
+	, fs =require('fs')
 	, router =require('express').Router()
 	, multer =require('multer')
 	, path =require('path')
 	, upload =multer({dest:path.join(__dirname, '../providers/reconciliation/manual')})
+	, csvParser =require('csv-parser')
+	, {handleReconciliation} =require('../financial_affairs')
 
 const idChanger=objectId;
-router.post('/upload', /*upload.single('settlement'),*/ async (req, res)=>{
+// function guessField(obj, possibleName, context) {
+// 	var testName=possibleName.toLowerCase;
+// 	var {cache={}, name_list=[]}=context;
+// 	if (cache[testName]) return obj[cache[testName]];
+// 	if (name_list.length==0) {
+// 		context.name_list=name_list=Object.keys(obj);
+// 	}
+// 	var directHit=name_list.findIndex(n=>n.toLowerCase()===testName);
+// 	if (directHit>=0) {
+// 		cache[testName]=name_list[directHit];
+// 		context.cache=cache;
+// 		return obj[cache[testName]];
+// 	}
+// 	var possibleHit=name_list.findIndex(n=>(n.toLowerCase().search(testName)>=0))
+// 	if (possibleHit>=0) {
+// 		cache[testName]=name_list[directHit];
+// 		context.cache=cache;
+// 		return obj[cache[testName]];
+// 	}
+// }
+router.post('/upload', upload.single('settlement'), (req, res)=>{
 	res.set({'Access-Control-Allow-Origin':'*', 'Cache-Control':'max-age=0'})
-	console.log(req.file, req.body);
-	res.send({});
+	var confirmedOrders=[], received=0, commission=0, context={};
+	fs.createReadStream(req.file.path)
+	.pipe(csvParser())
+	.on('data', (line)=>{
+		var money=Number(line.amount), orderId=line['Transaction ID'], fee=Number(line['Settlement Amount'])-amount;
+		received+=money;
+		commission+=fee;
+
+		confirmedOrders.push({orderId, money, fee});
+	})
+	.on('end', async ()=>{
+		// call financial affare
+		handleReconciliation({received, commission, confirmedOrders, recon_tag:path.basename(req.file.path)}, req.body.provider);
+	})
+	.on('error', (e)=>{
+		res.send({err:e});
+	})
 });
 module.exports={
 	list: async (params, role, req)=>{

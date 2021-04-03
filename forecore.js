@@ -95,7 +95,9 @@ function start(err, db) {
 					,{w:1})
 			// ])
 			var ret=await provider.forwardOrder(params);
-			db.bills.updateOne({_id:orderId}, {$set:{providerOrderId:ret.providerOrderId, status:'forward'}});
+			var upd={status:'forward'};
+			if (ret.providerOrderId) upd.providerOrderId=ret.providerOrderId;
+			db.bills.updateOne({_id:orderId}, {$set:upd});
 			return callback(null, mchSign(merchant, {...ret, outOrderId, orderId:params.orderId}));
 		}catch(e) {
 			return callback(e)
