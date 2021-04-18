@@ -59,6 +59,7 @@ export const StatementsList = ({permissions, ...props}) => {
                 <ReferenceField label="商户" source="account" reference="users" link={false}>
 				    <TextField source="name" />
                 </ReferenceField>
+                <TextField source="paymentMethod" label="支付方式"/>
 				<NumberField source="balance" label="收入" options={{ maximumFractionDigits: 2 }} footerSource="balance"/>
 				<NumberField source="commission" label="手续费" footerSource="money" options={{ maximumFractionDigits: 2 }} footerSource="commission"/>
                 <NumberField source="count" label="交易笔数" footerSource="money" options={{ maximumFractionDigits: 0 }}/>

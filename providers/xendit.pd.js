@@ -14,16 +14,19 @@ const url = require('url')
 , querystring=require('querystring')
 , Xendit = require('xendit-node')
 , x=new Xendit({
-    secretKey:'xnd_production_ZB6efUZYgjocx85aMXfbcL0XgcNJUks3CntYyeNakwUEvs0082hjgt3bxLoNR'
+    // formal key
+    // secretKey:'xnd_production_ZB6efUZYgjocx85aMXfbcL0XgcNJUks3CntYyeNakwUEvs0082hjgt3bxLoNR'
+    // test key
+    secretKey:'xnd_development_4e79IP5rPlpvC7BPcEjMyfqxPeTNAGD9NXLCazd5j48F7U2XdOyKvRI1M1StMh5'
 })
-, {Invoice, Disbursement} =x
+, {Invoice, Disbursement, Balance} =x
 , xendit_i=new Invoice({})
 , xendit_d=new Disbursement({})
+, xendit_b=new Balance({})
 
 const _noop=function() {};
 
 exports.bestSell=null;
-exports.getBalance=_noop;
 exports.sell=_noop;
 exports.bestPair=(money, cb)=>{
 	return cb(null, -1, 'IDR');
@@ -59,7 +62,7 @@ router.all('/return', (req, res)=>{
 })
 
 router.all('/done', bodyParser.urlencoded({extended:true}), async function (req, res) {
-    debugout(req.body);
+    debugout('recharge notify', req.body);
     var {external_id:orderId, id:providerOrderId, amount, status}=req.body;
     amount=Number(amount);
     try {
@@ -67,6 +70,20 @@ router.all('/done', bodyParser.urlencoded({extended:true}), async function (req,
         var {matchedCount}=await db.bills.updateOne({_id:ObjectId(orderId)}, {$set:{providerOrderId}}, {w:1});
         if (matchedCount==0) throw 'Invalid external_id';
         await confirmOrder(orderId, amount);
+        return res.send({result:'ok'});
+    } catch(e) {
+        return res.status(500).send({err:(typeof e==='object'?e.message:e)});
+    }
+});
+
+router.all('/disburse_result', bodyParser.urlencoded({extended:true}), async function(req, res) {
+    debugout('disburse notify', req.body);
+    var {external_id:orderId, status, amount, id:providerOrderId}=req.body;
+    amount=Number(amount);
+    try {
+        var {db}=await getDB();
+        var {matchedCount}=await db.withdrawal.updateOne({_id:ObjectId(orderId)}, {$set:{status}}, {w:1});
+        if (matchedCount==0) throw 'Invalid external_id';
         return res.send({result:'ok'});
     } catch(e) {
         return res.status(500).send({err:(typeof e==='object'?e.message:e)});
@@ -93,6 +110,14 @@ var forwardOrder =async function(params, callback) {
 }
 
 exports.forwardOrder=forwardOrder;
+
+exports.getBalance=async function() {
+    var [vb, vr]=await Promise.allSettled([
+        xendit_b.getBalance({accountType:Balance.AccountType.Cash}),
+        xendit_b.getBalance({accountType:Balance.AccountType.Holding})
+    ]);
+    return {err:vb.reason||vr.reason, balance:vb.value.balance||0, receivable:vr.value.balance};
+}
 
 const supportedBanks={
 'BPD Aceh':'ACEH',
@@ -236,10 +261,10 @@ const supportedBanks={
 'Shopeepay':'SHOPEEPAY',
 };
 
-exports.withdrawal =async function withdrawal(orderId, bank, owner, account, money) {
+exports.disburse =async function withdrawal(orderId, bank, owner, account, money) {
     var bankCode=supportedBanks[bank];
     if (!bankCode) throw 'not supported bank'
-    var {id} =await d.create({
+    var ret=await xendit_d.create({
         externalID: orderId,
         bankCode: supportedBanks[bank],
         accountHolderName: owner,
@@ -247,11 +272,11 @@ exports.withdrawal =async function withdrawal(orderId, bank, owner, account, mon
         description: 'Payment for '+owner,
         amount: money,
     })
-    return id;
+    return ret.id;
 }
 
 if (module===require.main) {
     (async ()=>{
-        console.log(await xendit_d.getBanks());
+        console.log(await exports.disburse(new ObjectId().toHexString(), 'Bank Central Asia (BCA)', 'fangziling', '7180318962', 50));
     })()
 }

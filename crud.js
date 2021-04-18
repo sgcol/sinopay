@@ -54,7 +54,8 @@ function httpc(f) {
 		res.set({'Access-Control-Allow-Origin':'*', 'Cache-Control':'max-age=0'})
 		if (!f) return res.send({err:'the operator is not availble'})
 		try {
-			var ret=f({...req.query, ...req.body, ...req.params}, req.auth.acl, req, res);
+			if (Array.isArray(req.body)) var ret=f(req.body, req.auth.acl, req, res);
+			else var ret=f({...req.query, ...req.body, ...req.params}, req.auth.acl, req, res);
 		} catch(e) {return res.send({err:readableErr(e)})}
 
 		if (ret instanceof Promise) {

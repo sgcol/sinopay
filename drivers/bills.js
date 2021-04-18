@@ -1,10 +1,10 @@
-const {objectId}=require('./dataDrivers.js')
+const {objectId, guessId}=require('./dataDrivers.js')
 	, {aclgte}=require('../auth')
 	, getDB =require('../db.js')
 	, {notifyMerchant}=require('../order.js')
 	, {dedecimal, isValidNumber} =require('../etc.js')
 
-const idChanger=objectId;
+const idChanger=guessId;
 module.exports={
 	list: async (params, role, req)=>{
 		var {filter, sort, order, offset, limit} =params;
@@ -68,6 +68,19 @@ module.exports={
 		return {rows:dedecimal(rows), total};
 	},
 	actions: {
+		add:async (params, role, req) =>{
+			if (!aclgte(role, 'manager')) {
+				throw 'access denied';
+			}
+			const {db}=await getDB();
+			for (var i=0; i<params.length; i++) {
+				var order=params[i];
+				order._id=idChanger(order._id);
+				order.time=new Date(order.time);
+			}
+			var {insertedCount} =await db.bills.insertMany(params, {ordered:false, writeConcern:{w:1}});
+			return {insertedCount};
+		},
 		notify: async (params, role, req) =>{
 			if (!aclgte(role, 'manager')) {
 				params.userid=req.auth._id;

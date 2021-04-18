@@ -75,8 +75,8 @@ const OptionButtons =({permissions, ...props})=>{
 	return (
 		<ButtonGroup variant="text" color="primary" aria-label="text primary button group">
 			<Button onClick={()=>{TakeAction('bills', {action:'notify', id:record.id})}}>notify</Button>
-			{permissions==='admin'?<Button onClick={()=>{TakeAction('bills', {action:'debugBill', id:record.id}).then(()=>{dispatch(refreshView())})}}>debug</Button>:null}
-			{permissions==='admin'?<Button onClick={()=>{TakeAction('bills', {action:'adminUseBill', id:record.id}).then(()=>{dispatch(refreshView())})}}>force</Button>:null}
+			{/* {permissions==='admin'?<Button onClick={()=>{TakeAction('bills', {action:'debugBill', id:record.id}).then(()=>{dispatch(refreshView())})}}>debug</Button>:null}
+			{permissions==='admin'?<Button onClick={()=>{TakeAction('bills', {action:'adminUseBill', id:record.id}).then(()=>{dispatch(refreshView())})}}>force</Button>:null} */}
 			<Button onClick={()=>{TakeAction('bills', {action:'refund', id:record.id}).then(()=>{dispatch(refreshView())})}}>refund</Button>
 		</ButtonGroup>
 	)
@@ -84,7 +84,7 @@ const OptionButtons =({permissions, ...props})=>{
 
 export const BillList = ({permissions, ...props}) => {
 	return (
-		<List {...props} filters={<BillFilter/>} exporter={false} title="充值订单" bulkActionButtons={false} sort={{ field: 'time', order: 'DESC' }}>
+		<List {...props} filters={<BillFilter/>} filterDefaultValues={{used:true, paymentMethod:{$nin:['disbursement', 'topup', 'withdrawal']}}} exporter={false} title="充值订单" bulkActionButtons={false} sort={{ field: 'time', order: 'DESC' }}>
 			<ExtendedDatagrid footerResource="billsSummary">
 				<TextField source="id" footerText="Total"/>
 				<TextField source="merchantName" label="商户"/>

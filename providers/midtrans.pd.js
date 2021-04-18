@@ -18,14 +18,13 @@ const snap = new midtransClient.Snap({
 const _noop=function() {};
 
 exports.bestSell=null;
-exports.getBalance=_noop;
 exports.sell=_noop;
 exports.bestPair=(money, cb)=>{
 	return cb(null, -1, 'IDR');
 };
 exports.name='midtrans';
 exports.router=router;
-exports.supportedMethods=['credit_card', 'gopay', 'cimb_clicks', 'bca_klikbca', 'bca_klikpay', 'bri_epay', 'telkomsel_cash', 'echannel', 'permata_va', 'other_va', 'bca_va', 'bni_va', 'bri_va', 'indomaret', 'danamon_online', 'akulaku', 'shopeepay'];
+exports.supportedMethods=['creditCards', 'VA', 'retailOutlets'];
 
 Number.prototype.pad = function(size) {
 	var s = String(this);

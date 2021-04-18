@@ -81,7 +81,7 @@ var baseUrl;
 export const fetchApi=(url, options) =>{
     if (url[0]==='/') var uri=`${baseUrl}${url}`;
     else uri=`${baseUrl}/${url}`;
-    return myFetchJson(uri, options);
+    return myFetchJson(uri, options)
 };
 /**
  * @param  {} apiUrl

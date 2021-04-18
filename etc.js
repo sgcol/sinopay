@@ -71,4 +71,8 @@ function dec2num(dec) {
 		if (isNaN(Number(x))) return false;
 		return true;
 	}
+	exports.errfy=(e)=>{
+		if (e instanceof Error) return e.message;
+		return e;
+	}
 })(module.exports);

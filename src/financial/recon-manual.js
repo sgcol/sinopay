@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect} from "react";
+import {Link} from "react-router-dom";
 import { Form, Label} from 'react-final-form';
-import {Box, Card as MuiCard, CardContent, withStyles, Dialog, DialogTitle, Button as MuiButton} from '@material-ui/core';
+import {Box, Card as MuiCard, CardContent, withStyles, Dialog, DialogTitle, Button as MuiButton, Collapse} from '@material-ui/core';
 import {DoneAll, CloudUpload,SportsMotorsports} from '@material-ui/icons';
 import { makeStyles } from '@material-ui/core/styles';
 import { 
@@ -8,7 +9,7 @@ import {
 	TextField, NumberField, DateField,
 	SelectInput, TopToolbar, DateInput, 
 	FormDataConsumer, SimpleForm,
-	useNotify, useDataProvider, useRedirect, useRefresh, 
+	useNotify, useDataProvider, useRedirect, useRefresh, useLogout,
 	sanitizeListRestProps,
 	Filter, FilterList, FilterListItem, FilterLiveSearch, TextInput, DateTimeInput, FileInput, FileField, 
 	Loading, 
@@ -26,8 +27,11 @@ const useStyles = makeStyles({
 });
 
 const UploadDialogToolbar =(props)=>{
-	const {className,variant = 'contained', disabled, }=props;
+	const {className,variant = 'contained', disabled, history}=props;
+	const logout=useLogout();
+	const notify=useNotify();
 	const classes = useStyles(props);
+	const [err, setErr] =useState();
 
 	return (
 		<Toolbar {...props}>
@@ -45,6 +49,17 @@ const UploadDialogToolbar =(props)=>{
 					fetchApi('recon/upload', {
 						method:'POST',
 						body:fmdt
+					}).then(({headers, json})=>{
+						var {modified}=json;
+						notify(`${modified} records updated`, 'success');
+					}).catch(({message, status})=>{
+						if (status === 401 || status === 403) {
+							return logout();
+						}
+						if (message) {
+							if (Array.isArray(message)) return history.push({pathname:'/refill-bills', state:message})//return setErr(message); return notify(`Orders ${message.map(item=>item.orderId).join(',')} are not exists, add them in bills first`, 'warning')
+							return notify(message.toString(), 'warning');
+						}
 					})
 				}}
 			>
@@ -64,7 +79,7 @@ const UploadDialog=({onClose, selectedValue, open, providers, ...rest})=>{
 	return (
 		<Dialog onClose={onClose} aria-labelledby="upload-dialog" open={open}>
 			<DialogTitle id="upload-dialog">Select settlement file</DialogTitle>
-			<SimpleForm handleSubmit={_noop} toolbar={<UploadDialogToolbar />}>
+			<SimpleForm handleSubmit={_noop} toolbar={<UploadDialogToolbar {...rest}/>}>
 				<SelectInput source="provider" choices={[].concat(providers)} />
 				<FileInput source="file" accept="text/csv">
 					<FileField source="src" title="title" />
@@ -183,7 +198,7 @@ const ReconList = (props) => {
 	
 	if (!providers) return <Loading />
 
-	return (<List {...props} resource="bills" aside={<FilterSidebar providers={providers}/>} filterDefaultValues={{unsettled:true}} actions={<ReconActions providers={providers}/>} bulkActionButtons={<PostBulkActionButtons />} exporter={false}  title='人工对账' sort={{ field: 'time', order: 'DESC' }}>
+	return (<List {...props} resource="bills" aside={<FilterSidebar providers={providers} {...props}/>} filterDefaultValues={{unsettled:true}} actions={<ReconActions providers={providers} {...props}/>} bulkActionButtons={<PostBulkActionButtons {...props} />} exporter={false}  title='人工对账' sort={{ field: 'time', order: 'DESC' }}>
 		<ExtendedDatagrid>
 			<TextField source="id"/>
 			<TextField source="merchantName" label="商户"/>

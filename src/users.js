@@ -1,5 +1,5 @@
-import React, { useState, useEffect,useCallback, useResourceContext } from "react";
-import { Drawer, Typography, makeStyles } from '@material-ui/core';
+import React, { useState, useEffect,useCallback, useResourceContext, cloneElement, Children, FC, ReactElement } from "react";
+import { Drawer, Typography, makeStyles, FormControl, InputLabel, } from '@material-ui/core';
 import InboxIcon from '@material-ui/icons/Inbox';
 import { 
 	List, Datagrid, TextField, BooleanField, NumberField, EditButton, ShowButton,
@@ -8,12 +8,15 @@ import {
 	Loading, Error,
 	useDataProvider, useGetMany,useListContext, useTranslate, useRefresh,
 	TopToolbar, CreateButton, SaveButton, Toolbar,
-	FormDataConsumer
+	FormDataConsumer,
+	Labeled, LinearProgress, FieldTitle, isRequired, 
 } from 'react-admin';
 import { useForm } from 'react-final-form';
-import {DateTimeField, EscapedTextField} from './extends/fields';
+import {DateTimeField, EscapedTextField, ObjectFormIterator} from './extends';
 import { Route } from 'react-router';
+import classnames from 'classnames';
 import md5 from 'md5';
+import get from 'lodash/get'
 
 const path=require('path');
 const objPath =require('object-path');
@@ -31,7 +34,18 @@ const SaveWithNoteButton = ({ handleSubmitWithRedirect, acl, ...props }) => {
 			}
 
 			// form.change('share', Number((1-Number(formdata.share)/100).toFixed(4)))
-			form.change('mdr', Number(Number(formdata.mdr)/100).toFixed(4))
+			var mdr=parseFloat(formdata.mdr);
+			if (mdr>=1) mdr=Number((mdr/100).toFixed(4));
+			form.change('mdr', mdr)
+
+			if (formdata.paymentMethod) {
+				for (var key in formdata.paymentMethod) {
+					var payment=formdata.paymentMethod[key];
+					var mdr=parseFloat(payment.mdr);
+					if (mdr>=1) mdr=Number((mdr/100).toFixed(4));
+					form.change(`paymentMethod.${key}.mdr`, mdr)
+				}
+			}
 
 			if (acl) form.change('acl', acl)
 
@@ -103,7 +117,92 @@ const Providers=({contents, ...props}) => {
 	return eles
 }
 
+function parseMDR(v) {
+	v=Number(v);
+	var ret=(v>=1)?v:v*100;
+	return ret;
+}
+
+const defaultShare={
+	creditCards:{
+		mdr:0.03, fix_fee:5000
+	},
+	eWallets:{
+		mdr:0.028, fix_fee:0
+	},
+	va:{
+		mdr:0, fix_fee:7500
+	},
+	retailOutlets:{
+		mdr:0, fix_fee:8500
+	},
+	disbursement:{
+		mdr:0, fix_fee:7500
+	}
+}
+const ShareSection =({
+	basePath,
+    className,
+    defaultValue,
+    label,
+    loaded,
+    loading,
+    children,
+    record,
+    resource,
+    source,
+    validate,
+    variant,
+    disabled,
+    margin = 'dense',
+    ...rest
+}) => {
+	if (loading) {
+        return (
+            <Labeled
+                label={label}
+                source={source}
+                resource={resource}
+                className={className}
+            >
+                <LinearProgress />
+            </Labeled>
+        );
+    }
+
+	return (
+        <FormControl
+            fullWidth
+            margin="normal"
+            className={className}
+            {...rest}
+        >
+            <InputLabel htmlFor={source} shrink>
+                <FieldTitle
+                    label={label}
+                    source={source}
+                    resource={resource}
+                    isRequired={isRequired(validate)}
+                />
+            </InputLabel>
+            {cloneElement(Children.only(children), {
+                fields: {...defaultValue, ...get(record, source)},
+				basePath:`${basePath}/${source}`,
+                record,
+                resource,
+                source,
+                variant,
+                margin,
+                disabled,
+				defaultValue
+            })}
+        </FormControl>
+    );
+}
+
 function CreateAndEditView(method, props) {
+	const classes=useStyles(props);
+	const {className}=props;
 	const dp=useDataProvider();
 	const [agents, setAgents] = useState();
 	const [providers, setProviders] =useState();
@@ -148,9 +247,15 @@ function CreateAndEditView(method, props) {
 				<TextInput source="pwd" label="密码" type="password"/>
 				<input name="acl" hidden value="merchant"></input>
 				<BooleanInput source="debugMode" />
-				<NumberInput source="mdr" defaultValue={3} min={0} max={100} step={0.1} options={{ minimumFractionDigits: 2, maximumFractionDigits: 2}}/>
-				<NumberInput source="fix_fee" defaultValue={0} options={{ minimumFractionDigits: 2, maximumFractionDigits: 2}}/>
-				<SelectInput source="parent" choices={agents}/>
+				<ShareSection source="paymentMethod" label="Share by payment" defaultValue={defaultShare} >
+					<ObjectFormIterator>
+						<TextInput source="mdr" variant="standard" label="mdr"/>
+						<TextInput className={classnames(classes.fixFee, className)} source="fix_fee" variant="standard" label="fixed fee"/>
+					</ObjectFormIterator>
+				</ShareSection>
+				{/* <TextInput source="mdr" defaultValue={"3.8%"}/>
+				<NumberInput source="fix_fee" defaultValue={0} options={{ minimumFractionDigits: 2, maximumFractionDigits: 2}}/> */}
+				<SelectInput source="parent" choices={[{id:null, name:'none'}].concat(agents)} label="agent"/>
 			</FormTab>
 			<FormTab label="Providers">
 				<Providers contents={{providers}} />
@@ -180,6 +285,8 @@ export const UserShow =props=> (
 	</Show>
 )
 
+const drawerWidth=380;
+
 const useStyles = makeStyles(
     theme => ({
         message: {
@@ -199,6 +306,17 @@ const useStyles = makeStyles(
             textAlign: 'center',
             marginTop: '2em',
         },
+		drawer: {
+			width: drawerWidth,
+			flexShrink: 0,
+		},
+		drawerPaper: {
+			width: drawerWidth,
+		},
+		fixFee :{
+			'-webkit-appearance': 'none !important',
+			margin: 0
+		}
     }),
     { name: 'RaEmpty' }
 );
@@ -226,86 +344,91 @@ const Empty = props => {
     );
 };
 
-class UserList extends React.Component {
-	render() {
-		const props  = this.props;
-		
-		return (
-			<React.Fragment>
-				<List {...props} filter={{ acl:'merchant' }} exporter={false} title="商户" actions={<UserListActions />} empty={<Empty />}>
-					<Datagrid rowClick="show">
-						<TextField source="name" label="显示名"/>
-						<EscapedTextField source="id" label="登录名"/>
-						<DateTimeField source="createTime" label="创建时间"/>
-						{/* <TextField source="key" />
-						<TextField source="merchantid" /> */}
-						<BooleanField source="debugMode" label="调试"/>
-						<NumberField source="share" label="分成" options={{style:"percent"}}/>
-						<NumberField label="账户余额" source="balance" options={{ minimumFractionDigits: 2, maximumFractionDigits: 2}}/>
-						<NumberField label="手续费" source="commission" options={{ minimumFractionDigits: 2, maximumFractionDigits: 2}}/>
-						<EditButton />
-						<ShowButton />
-					</Datagrid>
-				</List>
-				<Route path="/users/create">
-					{({ match }) => (
-                        <Drawer
-                            open={!!match}
-                            anchor="right"
-                            onClose={this.handleClose}
-                        >
-                            <UserCreator
-                                // className={classes.drawerContent}
-                                onCancel={this.handleClose}
-                                {...props}
-                            />
-                        </Drawer>
-                    )}
-				</Route>
-				<Route path="/users/:id/show">
-					{({match}) => {
-						const id=match && match.params && match.params.id, isMatch=id&&id!=='create';
-						if (!isMatch) return null;
-						return (
-							<Drawer open={isMatch} anchor="right" onClose={this.handleClose}>
-								{isMatch? <UserShow id={decodeURIComponent(id)} {...props}/>:null}
-							</Drawer>
-						)
-					}}
-				</Route>
-
-				<Route path="/users/:id">
-					{({ match , location}) => {
-						const isMatch =	match  && match.params && match.params.id !== 'create';
-						if (!isMatch) return null;
-						if (!match.isExact && path.basename(location.pathname)!=='1') return null;
-						return (
-							<Drawer
-								open={isMatch}
-								anchor="right"
-								onClose={this.handleClose}
-							>
-								{isMatch ? (
-									<UserEdit
-										// className={classes.drawerContent}
-										id={isMatch ? decodeURIComponent(match.params.id) : null}
-                                        onCancel={this.handleClose}
-										{...props}
-									/>
-								) : 
-								null
-								}
-							</Drawer>
-						);
-					}}
-				</Route>
-			</React.Fragment>
-		);
-	}
-
-    handleClose = () => {
-        this.props.history.push('/users');
+const UserList =(props) => {
+	const classes = useStyles(props);
+	const handleClose = () => {
+        props.history.push('/users');
     }
+	
+	return (
+		<React.Fragment>
+			<List {...props} filter={{ acl:'merchant' }} exporter={false} title="商户" actions={<UserListActions />} empty={<Empty />}>
+				<Datagrid rowClick="show">
+					<TextField source="name" label="显示名"/>
+					<EscapedTextField source="id" label="登录名"/>
+					<DateTimeField source="createTime" label="创建时间"/>
+					{/* <TextField source="key" />
+					<TextField source="merchantid" /> */}
+					<BooleanField source="debugMode" label="调试"/>
+					<NumberField source="share" label="分成" options={{style:"percent"}}/>
+					<NumberField label="账户余额" source="balance" options={{ minimumFractionDigits: 2, maximumFractionDigits: 2}}/>
+					<NumberField label="手续费" source="commission" options={{ minimumFractionDigits: 2, maximumFractionDigits: 2}}/>
+					<EditButton />
+					<ShowButton />
+				</Datagrid>
+			</List>
+			<Route path="/users/create">
+				{({ match }) => (
+					<Drawer
+						className={classes.drawer}
+						open={!!match}
+						anchor="right"
+						onClose={handleClose}
+						classes={{
+							paper: classes.drawerPaper,
+						}}
+					>
+						<UserCreator
+							// className={classes.drawerContent}
+							onCancel={handleClose}
+							{...props}
+						/>
+					</Drawer>
+				)}
+			</Route>
+			<Route path="/users/:id/show">
+				{({match}) => {
+					const id=match && match.params && match.params.id, isMatch=id&&id!=='create';
+					if (!isMatch) return null;
+					return (
+						<Drawer open={isMatch} anchor="right" onClose={handleClose}>
+							{isMatch? <UserShow id={decodeURIComponent(id)} {...props}/>:null}
+						</Drawer>
+					)
+				}}
+			</Route>
+
+			<Route path="/users/:id">
+				{({ match , location}) => {
+					const isMatch =	match  && match.params && match.params.id !== 'create';
+					if (!isMatch) return null;
+					if (!match.isExact && path.basename(location.pathname)!=='1') return null;
+					return (
+						<Drawer
+							open={isMatch}
+							anchor="right"
+							onClose={handleClose}
+							className={classes.drawer}
+							classes={{
+								paper: classes.drawerPaper,
+							}}
+						>
+							{isMatch ? (
+								<UserEdit
+									// className={classes.drawerContent}
+									id={isMatch ? decodeURIComponent(match.params.id) : null}
+									onCancel={handleClose}
+									{...props}
+								/>
+							) : 
+							null
+							}
+						</Drawer>
+					);
+				}}
+			</Route>
+		</React.Fragment>
+	)
 }
 
 export default {

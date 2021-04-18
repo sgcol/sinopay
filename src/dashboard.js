@@ -1,6 +1,6 @@
 import React, {useEffect, useState} from 'react'
 import { 
-	Title, useDataProvider, useGetIdentity
+	Title, useDataProvider, useGetIdentity, useRefresh
 } from 'react-admin';
 import {Button, Card, CardHeader, CardContent, Grid, Typography, Divider, makeStyles} from '@material-ui/core';
 import Alert from '@material-ui/lab/Alert';
@@ -52,7 +52,11 @@ const useStyles = makeStyles((theme) => ({
 }));
 
 const DisableDebugMode=({user, ...rest})=>{
-	const action=<Button color="inherit" size="small">DISABLE DEBUG</Button>
+	const dp=useDataProvider(), refresh=useRefresh();
+	const action=<Button color="inherit" size="small" onClick={()=>{
+		dp.update('users', {data:{debugMode:false}})
+		.then(refresh)
+	}}>DISABLE DEBUG</Button>
 	return (user && user.debugMode)? (
 		<Alert severity="warning" variant="filled" {...rest} action={action}>您正在使用调试接口，在正式上线之前请务必关闭调试模式</Alert>
 	):null

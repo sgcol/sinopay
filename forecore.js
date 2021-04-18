@@ -16,6 +16,7 @@ const router=require('express').Router()
 , fse =require('fs-extra')
 , JSZip =require('jszip')
 , XLSX =require('xlsx')
+, {getAccountBalance, getOutstandingBalance} =require('./financial_affairs')
 
 const allPayType=['ALIPAYH5', 'WECHATPAYH5', 'UNIONPAYH5', 'ALIPAYAPP', 'WECHATPAYAPP', 'ALIPAYMINI', 'WECHATPAYMINI', 'ALIPAYPC', 'WECHATPAYPC', 'UNIONPAYPC'];
 
@@ -82,6 +83,7 @@ function start(err, db) {
 					, provider:provider.name||provider.internal_name
 					, providerOrderId:''
 					, share:merchant.share
+					, payment:merchant.paymentMethod
 					, money:money
 					, paidmoney:-1
 					, currency: currency
@@ -150,35 +152,42 @@ function start(err, db) {
 	}));
 	router.all('/disburse', verifyMchSign, err_h, httpf({partnerId:'string', outOrderId:'string', money:'number', bank:'string', branch:'?string', owner:'string', account:'string', callback:true}, 
 	async function(partnerId, outOrderId, money, bank, branch, owner, account,callback) {
+		var session=db.mongoClient.startSession();
 		try {
-			var order=await db.withdrawal.findOneAndUpdate({merchantOrderId:outOrderId}, {$setOnInsert:
-			{
-				merchantOrderId:outOrderId
-				, parnterId:partnerId
-				, userid:merchant._id
-				, merchantid:merchant.merchantid
-				, merchantName:merchant.name
-				, provider:provider.name||provider.internal_name
-				, providerOrderId:''
-				, money:money
-				, payout:-1
-				, currency: currency
-				, type: params.type
-				, time:new Date()
-				, lasttime:new Date()
-				, lasterr:''
-			}});
-			if (!order) return callback('无此订单');
-			if (order.merchantid!=partnerId) return callback('该订单不属于指定的partner');
-			if (!order.provider || !order.paidmoney) return callback('订单尚未支付');
-			var pvd=getProvider(order.provider);
-			if (!pvd) return callback('订单尚未支付');
-			if (!pvd.refund) return callback('提供方不支持退单');
-			var merchant=await db.users.findOne({_id:partnerId});
-			var result=await pvd.refund(order, money, merchant);
-			// await db.bills.updateOne({_id:order._id}, {$set:{status:'refund'}}, {w:1});
-			callback(null, result);
-		} catch(e) {callback(e)}
+			var time=new Date();
+			var mer=await db.users.findOne({_id:partnerId});
+			if (!mer) throw 'no such partnerId';
+			var {mdr, fix_fee}=objPath.get(mer, ['paymentMethod', 'disburse'], {mdr:0, fix_fee:0});
+			var commission=Number((money*mdr+fix_fee).toFixed(2));
+
+			var provider=await bestProvider(money, mer);
+			if (!provider) throw 'no provider found ';
+			if (!provider.disburse) throw 'the provider do not support disbursement';
+			var providerName=provider.name, orderId, providerOrderId;
+
+			await session.withTransaction( async ()=>{
+				// lock the account & outstandingAccount
+				await db.locks.findOneAndUpdate({_id:mer._id}, {$set:{disburseLock:{account:mer._id, pseudoRandom: ObjectId() }}}, {seesion});
+				var accountBalance=await getAccountBalance(mer._id);
+				if (accountBalance< (money+commission)) throw 'balance is not enough';
+				var orderId=new ObjectId();
+				var [,,providerOrderId]= await Promise.all([
+					db.bills.insertOne({_id:orderId, merchantOrderId:outOrderId, partnerId, merchantName:mer.name, userid:mer._id, money:money, paymentMethod:'disburse', bank, branch, owner, account, provider:providerName, payment:mer.paymentMethod, time}, {session}),
+					db.accounts.insertOne({account:mer._id, balance:num2dec(-money-commission), payable:num2dec(money), commission:num2dec(commission), time, provider:providerName, ref_id:orderId, transactionNum:1}, {session}),
+					provider.disburse(insertedId, bank, owner, account, money)
+					// db.outstandingAccounts.insertOne({account:providerName, balance:num2dec(-money), payable:num2dec(money), time, ref_id:insertedId})
+				]);
+			},{
+				readPreference: 'primary',
+				readConcern: { level: 'local' },
+				writeConcern: { w: 'majority' }
+			})
+			callback(null, {outOrderId, orderId, providerOrderId, money, bank, branch, owner, account});
+		} catch(e) {
+			callback(e);
+		} finally {
+			await session.endSession();
+		}
 	}));
 	router.all('/settlements', verifyAuth, httpf({from:'?date', to:'?date', sort:'?string', order:'?string', offset:'?number', limit:'?number', callback:true}, 
 	async function(from, to, sort, order, offset, limit, callback) {

@@ -27,7 +27,8 @@ module.exports={
 		if (!aclgte(role, 'manager')) {
 			filter.account=req.auth._id;
 		}
-		if (!filter.account) filter.account={$ne:'user'}
+		if (!filter.account) filter.account={$nin:['user', 'system']}
+		filter.balance={$ne:null}
 
 		var groupby={dot:'$dot', account:'$account', currency:'$currency'}, af={dot:{$dateToString:{date:'$time', format:'%Y-%m-%d'}}};
 
@@ -36,7 +37,7 @@ module.exports={
 		var stage=[
 			{$match:filter},
 			{$addFields:af},
-			{$group:{_id:groupby, balance:{$sum:'$balance'}, commission:{$sum:'commission'}, count:{$sum:1}}}
+			{$group:{_id:groupby, balance:{$sum:'$balance'}, commission:{$sum:'$commission'}, count:{$sum:'$transactionNum'}}}
 		];
 		if (sort) {
 			var so={};
@@ -46,7 +47,6 @@ module.exports={
 		stage=stage.concat([
 			{$project:{
 				doc:{
-					_id:ObjectId(),
 					time:'$_id.dot',
 					account:'$_id.account',
 					currency:'$_id.currency',
@@ -59,18 +59,19 @@ module.exports={
 		])
 
 		var cur=db.accounts.aggregate(stage);
-		if (sort) {
-			var so={};
-			so[sort]=(order=='ASC'?1:-1);
-			cur=cur.sort(so);
-		}
+		// if (sort) {
+		// 	var so={};
+		// 	so[sort]=(order=='ASC'?1:-1);
+		// 	cur=cur.sort(so);
+		// }
 
 		if (offset) cur=cur.skip(Number(offset));
 		if (limit) cur=cur.limit(Number(limit));
 		var [ret]=await cur.toArray();
 		if (!ret) return {total:0, rows:[]}
 		dedecimal(ret.rows);
-		ret.rows.forEach((item)=>{item._id=item.account});
+		var num=0;
+		ret.rows.forEach((item)=>{item._id=num++});
 		return ret;
 	}
 }

@@ -18,14 +18,13 @@ const _noop=function() {};
 const signatureKey=argv.espay_signkey||'jvqvatll76wotamq', Password=argv.espay_password||'E#0KNJB/Y^', apiKey=argv.espay_apikey||'a7bec7f98f4683a1b75dbc91bbd17079';
 
 exports.bestSell=null;
-exports.getBalance=_noop;
 exports.sell=_noop;
 exports.bestPair=(money, cb)=>{
 	return cb(null, -1, 'IDR');
 };
 exports.name='espay';
 exports.router=router;
-exports.supportedMethods=['credit_card', 'ovo', 'bank_va', 'convient_store'];
+exports.supportedMethods=['creditCards', 'eWallets', 'VA', 'retailOutlets'];
 
 Number.prototype.pad = function(size) {
 	var s = String(this);
