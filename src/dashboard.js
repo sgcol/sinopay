@@ -2,7 +2,7 @@ import React, {useEffect, useState} from 'react'
 import { 
 	Title, useDataProvider, useGetIdentity, useRefresh
 } from 'react-admin';
-import {Button, Card, CardHeader, CardContent, Grid, Typography, Divider, makeStyles} from '@material-ui/core';
+import {Button, Card, CardHeader, CardContent, Grid, Typography, Divider, makeStyles, Collapse} from '@material-ui/core';
 import Alert from '@material-ui/lab/Alert';
 
 const useStyles = makeStyles((theme) => ({
@@ -53,13 +53,16 @@ const useStyles = makeStyles((theme) => ({
 
 const DisableDebugMode=({user, ...rest})=>{
 	const dp=useDataProvider(), refresh=useRefresh();
+	const [disableAlert, setDisableAlert]=useState();
 	const action=<Button color="inherit" size="small" onClick={()=>{
 		dp.update('users', {data:{debugMode:false}})
-		.then(refresh)
+		.then(()=>{
+			setDisableAlert(true)
+		})
 	}}>DISABLE DEBUG</Button>
-	return (user && user.debugMode)? (
+	return <Collapse in={!disableAlert && user && user.debugMode} >
 		<Alert severity="warning" variant="filled" {...rest} action={action}>您正在使用调试接口，在正式上线之前请务必关闭调试模式</Alert>
-	):null
+	</Collapse>
 }
 const DashboardShow =({options, permissions, ...rest})=> {
 	var classes=useStyles();

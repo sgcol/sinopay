@@ -15,9 +15,9 @@ const url = require('url')
 , Xendit = require('xendit-node')
 , x=new Xendit({
     // formal key
-    // secretKey:'xnd_production_ZB6efUZYgjocx85aMXfbcL0XgcNJUks3CntYyeNakwUEvs0082hjgt3bxLoNR'
+    secretKey:'xnd_production_ZB6efUZYgjocx85aMXfbcL0XgcNJUks3CntYyeNakwUEvs0082hjgt3bxLoNR'
     // test key
-    secretKey:'xnd_development_4e79IP5rPlpvC7BPcEjMyfqxPeTNAGD9NXLCazd5j48F7U2XdOyKvRI1M1StMh5'
+    // secretKey:'xnd_development_4e79IP5rPlpvC7BPcEjMyfqxPeTNAGD9NXLCazd5j48F7U2XdOyKvRI1M1StMh5'
 })
 , {Invoice, Disbursement, Balance} =x
 , xendit_i=new Invoice({})

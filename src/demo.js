@@ -34,7 +34,7 @@ const Go=({providers, users})=>{
     const get_url=(cb)=>{
         var partner=users.find(u=>u.id==values.partner);
         if (!partner) return notify('no such partner', 'error');
-        var apiUrl=window.location.origin;
+        var apiUrl=window.location.origin+'/';
         if (window.location.search) {
             var {server}=Qs.parse(window.location.search.slice(1));
             if (server) apiUrl=url.format({protocol:window.location.protocol, host:server});

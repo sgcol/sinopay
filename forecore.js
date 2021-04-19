@@ -25,7 +25,10 @@ const {verifyAuth, verifyManager}=require('./auth.js');
 exports.router=router;
 
 function err_h(err, req, res, next) {
-	if (err) res.send({err:err});
+	if (err) {
+		res.set({'Access-Control-Allow-Origin':'*', 'Cache-Control':'max-age=0'});
+		res.send({err:err});
+	}
 	else next();
 }
 (function init(cb) {
