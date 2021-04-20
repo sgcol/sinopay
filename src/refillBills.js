@@ -66,7 +66,7 @@ const useStyles = makeStyles(
     { name: 'RaArrayFormIterator' }
 );
 
-const Save=({history, bills, users:userArray, ...rest})=>{
+const Save=({history, bills, users:userArray, provider, ...rest})=>{
 	const classes = useStyles()
 	const dp=useDataProvider(), notify=useNotify(), {values}=useFormState(), logout=useLogout();
 	const handleClick=()=>{
@@ -75,13 +75,13 @@ const Save=({history, bills, users:userArray, ...rest})=>{
 			users[u.id]=u;
 		})
 		var ops=bills.map((bill)=>{
-			var {orderId:_id, money, time, paymentMethod}=bill;
+			var {orderId:_id, money, time, paymentMethod, originData}=bill;
 			var userid=values['order'+_id];
 			if (!userid) return notify('all the owner must be specified');
 			if (userid==='system') return {_id, userid, paymentMethod, time};
 			else {
 				var {share, paymentMethod:payment, name:merchantName}=users[userid];
-				return {_id, money, userid, merchantName, share, payment, paymentMethod, time};
+				return {_id, money, userid, merchantName, share, provider, payment, paymentMethod, currency:'IDR', time};
 			}
 		})
 		
@@ -115,7 +115,7 @@ const Save=({history, bills, users:userArray, ...rest})=>{
 const RefillBills=(props)=>{
 	const {options, history, className}=props;
 	const classes = useDatagridStyles(props);
-	const bills=history.location.state;
+	const {bills, provider}=history.location.state;
 	const dp=useDataProvider(), notify=useNotify();
 	const [users, setUsers]=useState();
 	useEffect(()=>{
@@ -146,7 +146,7 @@ const RefillBills=(props)=>{
 	return (<Card>
 	<Title defaultTitle="Refill Bills" />
 	<Alert severity="error">These orders are not exist in our system, please fill them first</Alert>
-	<SimpleForm toolbar={<Save {...props} bills={bills} users={users}/>} submitOnEnter={false}>
+	<SimpleForm toolbar={<Save {...props} bills={bills} users={users} provider={provider}/>} submitOnEnter={false}>
 		<Table className={classnames(classes.table, className)}>
 			<TableHead className={classes.thead}>
 				<TableRow

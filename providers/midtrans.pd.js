@@ -24,7 +24,7 @@ exports.bestPair=(money, cb)=>{
 };
 exports.name='midtrans';
 exports.router=router;
-exports.supportedMethods=['creditCards', 'VA', 'retailOutlets'];
+exports.supportedMethods=['creditCards', 'va', 'retailOutlets'];
 
 Number.prototype.pad = function(size) {
 	var s = String(this);

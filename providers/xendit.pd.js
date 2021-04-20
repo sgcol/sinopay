@@ -33,7 +33,7 @@ exports.bestPair=(money, cb)=>{
 };
 exports.name='xendit';
 exports.router=router;
-exports.supportedMethods=['creditCards', 'VA', 'eWallets', 'retailOutlets', 'QRCodes'];
+exports.supportedMethods=['creditCards', 'va', 'eWallet', 'retailOutlets', 'QRCodes'];
 
 Number.prototype.pad = function(size) {
 	var s = String(this);

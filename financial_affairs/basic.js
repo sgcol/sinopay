@@ -140,7 +140,7 @@ async function handleReconciliation(reconContent, providerName) {
 					update:{$set:{payable:num2dec(-money), time:recon_time}},
 					upsert:true
 				}});
-				var paymentParams=payment.disburse;
+				var paymentParams=payment.disbursement;
 				if (!paymentParams) {
 					var u=await getUser(merchantid);
 					paymentParams=_get(u, ['paymentMethod', 'disburse'], {})
@@ -150,7 +150,7 @@ async function handleReconciliation(reconContent, providerName) {
 				accountsUpds.push({updateOne:{
 					filter:{account:merchantid, ref_id, deduction:{$ne:true}},
 					update:{$set:{fee:nfee, time},
-							$setOnInsert:{balance:num2dec(-(money-commission)), payable:num2dec(money), commission:num2dec(commission), provider:providerName, transactionNum:1}
+							$setOnInsert:{balance:num2dec(-money-commission), payable:num2dec(money), commission:num2dec(commission), provider:providerName, transactionNum:1}
 					},
 					upsert:true
 				}})

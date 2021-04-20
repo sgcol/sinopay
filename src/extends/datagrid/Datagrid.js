@@ -233,6 +233,7 @@ export const Datagrid = React.forwardRef((props, ref) => {
                                     if (!footerData) return null;
                                     if (field.props.footerText) return field.props.footerText;
                                     if (field.props.footerSource) return footerData[field.props.footerSource];
+                                    if (field.props.footerRender) return field.props.footerRender(footerData);
                                     return null
                                 })()}
                             </TableCell>

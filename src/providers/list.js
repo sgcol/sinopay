@@ -49,7 +49,7 @@ const FullProviderInfo =({data, ids, ...rest})=>{
 			data[b.id].outstandingReceivable=b.receivable;
 		}
 	})
-	return 	(<Datagrid rowClick="expand">
+	return 	(<Datagrid>
 		<TextField source="name" />
 		<BooleanField source="forecore" label="四方"/>
 		<BooleanField source="withdrawal" label="支持提款"/>

@@ -158,8 +158,7 @@ function start(err, db) {
 		var session=db.mongoClient.startSession();
 		try {
 			var time=new Date();
-			var mer=await db.users.findOne({_id:partnerId});
-			if (!mer) throw 'no such partnerId';
+			var mer=this.req.merchant;
 			var {mdr, fix_fee}=objPath.get(mer, ['paymentMethod', 'disburse'], {mdr:0, fix_fee:0});
 			var commission=Number((money*mdr+fix_fee).toFixed(2));
 

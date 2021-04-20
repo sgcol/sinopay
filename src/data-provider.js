@@ -72,6 +72,8 @@ function mapResource(name) {
         case 'managers':
         case 'agents':
             return 'users';
+        case 'disbursements':
+            return 'bills';
         default:
             return name;
     }

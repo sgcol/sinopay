@@ -8,6 +8,7 @@ import Users from './users';
 import Managers from './managers';
 import Agents from './agents';
 import Bills from './bills';
+import Disbursements from './disbursements';
 import Providers from './providers';
 import Docs from './docs';
 import Statements from './statements';
@@ -17,7 +18,7 @@ import DashbaordPage from './dashboard';
 import Demo from './demo';
 
 //icons
-import {AccountTree, CloudDone, PlaylistAddCheck, SupervisorAccount, Apple, Apartment, Storefront, Receipt, Dashboard,Assessment,SportsMotorsports, LibraryBooks, DeveloperBoard} from '@material-ui/icons';
+import {AccountTree, CloudDone, PlaylistAddCheck, SupervisorAccount, Apple, Apartment, Storefront, Receipt, Dashboard,Assessment,SportsMotorsports, LibraryBooks, DeveloperBoard, Payment} from '@material-ui/icons';
 var location=window.location, start_params=new URLSearchParams(location.search), spec_server=start_params.get('server');
 var apiUrl;
 if (spec_server) {
@@ -47,6 +48,7 @@ const App = () => (
 				))
 			}
 			ret.push(<Resource key="bills" name="bills" icon={Receipt} {...Bills} options={{label:'Transactions'}}/>);
+			ret.push(<Resource key="disbursements" name="disbursements" icon={Payment} {...Disbursements} options={{label:'Disbursements'}}/>);
 			ret.push(<Resource key="statements" name="statements" icon={Assessment} {...Statements} options={{label:'Billings'}}/>);
 			ret.push(<Resource key="docs" name="docs" icon={LibraryBooks} {...Docs} options={{label:'Integrations'}} />);
 			ret.push(<Resource key="demo" name="demo" icon={DeveloperBoard} {...Demo} options={{label:'Demo'}} />);

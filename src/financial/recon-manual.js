@@ -20,11 +20,14 @@ import {fetchApi} from '../data-provider';
 
 const _noop=()=>{}
 
-const useStyles = makeStyles({
-  actionButton: {
-	  marginBottom:'29px',
-  },
-});
+const useStyles = makeStyles(theme=>({
+	actionButton: {
+		marginBottom:'29px',
+	},
+	leftIcon: {
+		marginRight: theme.spacing(1),
+	},
+}));
 
 const UploadDialogToolbar =(props)=>{
 	const {className,variant = 'contained', disabled, history}=props;
@@ -34,10 +37,10 @@ const UploadDialogToolbar =(props)=>{
 	const [err, setErr] =useState();
 
 	return (
-		<Toolbar {...props}>
+		<Toolbar>
 		<FormDataConsumer>
 		{({formData, ...rest})=>(
-			<MuiButton className={classnames(classes.button, className)} varirant={variant} disabled={disabled} type="button"
+			<MuiButton varirant="contained" disabled={disabled} type="button" color="primary" 
 				onClick={()=>{
 					const fmdt = new FormData();
 					fmdt.append(
@@ -57,7 +60,7 @@ const UploadDialogToolbar =(props)=>{
 							return logout();
 						}
 						if (message) {
-							if (Array.isArray(message)) return history.push({pathname:'/refill-bills', state:message})//return setErr(message); return notify(`Orders ${message.map(item=>item.orderId).join(',')} are not exists, add them in bills first`, 'warning')
+							if (Array.isArray(message)) return history.push({pathname:'/refill-bills', state:{bills:message, provider:formData.provider}})//return setErr(message); return notify(`Orders ${message.map(item=>item.orderId).join(',')} are not exists, add them in bills first`, 'warning')
 							return notify(message.toString(), 'warning');
 						}
 					})
@@ -80,7 +83,7 @@ const UploadDialog=({onClose, selectedValue, open, providers, ...rest})=>{
 		<Dialog onClose={onClose} aria-labelledby="upload-dialog" open={open}>
 			<DialogTitle id="upload-dialog">Select settlement file</DialogTitle>
 			<SimpleForm handleSubmit={_noop} toolbar={<UploadDialogToolbar {...rest}/>}>
-				<SelectInput source="provider" choices={[].concat(providers)} />
+				<SelectInput source="provider" choices={[].concat(providers)} variant="standard"/>
 				<FileInput source="file" accept="text/csv">
 					<FileField source="src" title="title" />
 				</FileInput>

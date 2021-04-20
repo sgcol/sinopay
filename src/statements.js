@@ -2,7 +2,7 @@ import React from "react";
 import { Card as MuiCard, CardContent, withStyles } from '@material-ui/core';
 import AccessTimeIcon from '@material-ui/icons/AccessTime';
 import {
-	List, TextField, NumberField, DateField, ReferenceField,
+	List, TextField, NumberField, DateField, ReferenceField, FunctionField,
     FilterList, FilterListItem,
 } from 'react-admin';
 import {ExtendedDatagrid} from './extends'
@@ -51,6 +51,8 @@ const FilterSidebar = () => (
         </CardContent>
     </Card>
 );
+const showIncoming=rec=>(rec.balance+rec.commission)
+
 export const StatementsList = ({permissions, ...props}) => {
 	return (
 		<List {...props} title="报表" bulkActionButtons={false} sort={{ field: 'time', order: 'DESC' }}>
@@ -60,7 +62,7 @@ export const StatementsList = ({permissions, ...props}) => {
 				    <TextField source="name" />
                 </ReferenceField>
                 <TextField source="paymentMethod" label="支付方式"/>
-				<NumberField source="balance" label="收入" options={{ maximumFractionDigits: 2 }} footerSource="balance"/>
+				<FunctionField source="balance" label="收入" render={showIncoming} footerRender={showIncoming}/>
 				<NumberField source="commission" label="手续费" footerSource="money" options={{ maximumFractionDigits: 2 }} footerSource="commission"/>
                 <NumberField source="count" label="交易笔数" footerSource="money" options={{ maximumFractionDigits: 0 }}/>
 			</ExtendedDatagrid>

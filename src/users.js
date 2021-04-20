@@ -127,7 +127,7 @@ const defaultShare={
 	creditCards:{
 		mdr:0.03, fix_fee:5000
 	},
-	eWallets:{
+	eWallet:{
 		mdr:0.028, fix_fee:0
 	},
 	va:{

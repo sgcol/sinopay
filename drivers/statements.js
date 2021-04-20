@@ -39,11 +39,11 @@ module.exports={
 			{$addFields:af},
 			{$group:{_id:groupby, balance:{$sum:'$balance'}, commission:{$sum:'$commission'}, count:{$sum:'$transactionNum'}}}
 		];
-		if (sort) {
-			var so={};
-			so[sort]=(order=='asc'?1:-1);
-			stage.push({$sort:so});
-		}
+		// if (sort) {
+		// 	var so={};
+		// 	so[sort]=(order=='asc'?1:-1);
+		// 	stage.push({$sort:so});
+		// }
 		stage=stage.concat([
 			{$project:{
 				doc:{
@@ -59,11 +59,11 @@ module.exports={
 		])
 
 		var cur=db.accounts.aggregate(stage);
-		// if (sort) {
-		// 	var so={};
-		// 	so[sort]=(order=='ASC'?1:-1);
-		// 	cur=cur.sort(so);
-		// }
+		if (sort) {
+			var so={};
+			so[sort]=(order=='ASC'?1:-1);
+			cur=cur.sort(so);
+		}
 
 		if (offset) cur=cur.skip(Number(offset));
 		if (limit) cur=cur.limit(Number(limit));

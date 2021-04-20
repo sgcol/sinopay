@@ -24,7 +24,7 @@ exports.bestPair=(money, cb)=>{
 };
 exports.name='espay';
 exports.router=router;
-exports.supportedMethods=['creditCards', 'eWallets', 'VA', 'retailOutlets'];
+exports.supportedMethods=['creditCards', 'eWallet', 'va', 'retailOutlets'];
 
 Number.prototype.pad = function(size) {
 	var s = String(this);
