@@ -22,25 +22,35 @@ function guessId(id) {
 	db_event.when('bills', 'update', async (rec)=>{
 		if (rec.updateDescription && rec.updateDescription.updatedFields && rec.updateDescription.updatedFields.used===true) {
 			console.log(rec.updateDescription.updatedFields);
-			var {used, merchantid, money, provider, paidmoney, _id, time, rec_id, paymentMethod}=rec.fullDocument;
+			var {used, merchantid, money, provider, paidmoney, _id, time, rec_id, paymentMethod, status}=rec.fullDocument;
 			paidmoney=paidmoney||money;
-			if (paymentMethod!=null || paymentMethod!='recharge') return;
-			// only recharge order
-			var session=db.mongoClient.startSession();
-			try {
-				await session.withTransaction(async ()=>{
-					var now=time, rec_id=new ObjectId();
-					var op2={account:provider, receivable:num2dec(paidmoney), recharge:num2dec(-paidmoney), time:now, ref_id:_id, op_id:rec_id};
-					await db.outstandingAccounts.insertOne(op2,{session});
-					await db.accounts.insertOne({...op2, account:merchantid}, {session});
-					await db.bills.updateOne({_id:_id}, {$set:{rec_id}}, {session});
-				}, {
-					readPreference: 'primary',
-					readConcern: { level: 'local' },
-					writeConcern: { w: 'majority' }
-				});
-			} finally {
-				await session.endSession();
+			switch (paymentMethod) {
+				case 'recharge':
+				case null:
+					// only recharge order
+					var session=db.mongoClient.startSession();
+					try {
+						await session.withTransaction(async ()=>{
+							var now=time, rec_id=new ObjectId();
+							var op2={account:provider, receivable:num2dec(paidmoney), recharge:num2dec(-paidmoney), time:now, ref_id:_id, op_id:rec_id};
+							await db.outstandingAccounts.insertOne(op2,{session});
+							await db.accounts.insertOne({...op2, account:merchantid}, {session});
+							await db.bills.updateOne({_id:_id}, {$set:{rec_id}}, {session});
+						}, {
+							readPreference: 'primary',
+							readConcern: { level: 'local' },
+							writeConcern: { w: 'majority' }
+						});
+					} finally {
+						await session.endSession();
+					}
+				break;
+				case 'disbursement':
+					if (status!='COMPLETED') {
+						// refund, commission will be deduct anyway?
+						db.accounts.insertOne({account:merchantid, time:now, refund:true, ref_id:_id, op_id:rec_id, balance:num2dec(money), payable:num2dec(-money)});
+					}
+				break;
 			}
 			return true;
 		}
@@ -143,12 +153,12 @@ async function handleReconciliation(reconContent, providerName) {
 				var paymentParams=payment.disbursement;
 				if (!paymentParams) {
 					var u=await getUser(merchantid);
-					paymentParams=_get(u, ['paymentMethod', 'disburse'], {})
+					paymentParams=_get(u, ['paymentMethod', 'disbursement'], {})
 				}
 				var {mdr=0, fix_fee=0}=paymentParams;
 				var commission=Number((money*mdr+fix_fee).toFixed(2));
 				accountsUpds.push({updateOne:{
-					filter:{account:merchantid, ref_id, deduction:{$ne:true}},
+					filter:{account:merchantid, ref_id, deduction:{$ne:true}, refund:{$ne:true}},
 					update:{$set:{fee:nfee, time},
 							$setOnInsert:{balance:num2dec(-money-commission), payable:num2dec(money), commission:num2dec(commission), provider:providerName, transactionNum:1}
 					},

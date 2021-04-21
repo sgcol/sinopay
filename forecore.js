@@ -159,7 +159,7 @@ function start(err, db) {
 		try {
 			var time=new Date();
 			var mer=this.req.merchant;
-			var {mdr, fix_fee}=objPath.get(mer, ['paymentMethod', 'disburse'], {mdr:0, fix_fee:0});
+			var {mdr, fix_fee}=objPath.get(mer, ['paymentMethod', 'disbursement'], {mdr:0, fix_fee:0});
 			var commission=Number((money*mdr+fix_fee).toFixed(2));
 
 			var provider=await bestProvider(money, mer);
@@ -174,7 +174,7 @@ function start(err, db) {
 				if (accountBalance< (money+commission)) throw 'balance is not enough';
 				var orderId=new ObjectId();
 				var [,,providerOrderId]= await Promise.all([
-					db.bills.insertOne({_id:orderId, merchantOrderId:outOrderId, partnerId, merchantName:mer.name, userid:mer._id, money:money, paymentMethod:'disburse', bank, branch, owner, account, provider:providerName, payment:mer.paymentMethod, time}, {session}),
+					db.bills.insertOne({_id:orderId, merchantOrderId:outOrderId, partnerId, merchantName:mer.name, userid:mer._id, money:money, paymentMethod:'disbursement', bank, branch, owner, account, provider:providerName, payment:mer.paymentMethod, time}, {session}),
 					db.accounts.insertOne({account:mer._id, balance:num2dec(-money-commission), payable:num2dec(money), commission:num2dec(commission), time, provider:providerName, ref_id:orderId, transactionNum:1}, {session}),
 					provider.disburse(insertedId, bank, owner, account, money)
 					// db.outstandingAccounts.insertOne({account:providerName, balance:num2dec(-money), payable:num2dec(money), time, ref_id:insertedId})

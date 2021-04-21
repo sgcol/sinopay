@@ -83,10 +83,10 @@ getDB((err, db)=>{
 			var r=await db.users.findOne({_id:username});
 			if (!r) throw ('用户名密码错');
 			if (encryptedPassword) {
-				if (r.password!=encryptedPassword) throw callback('用户名密码错');
+				if (r.password!=encryptedPassword) throw ('用户名密码错');
 			} else if (password) {
-				if (r.password!==md5(r.salt+password)) throw callback('用户名密码错');
-			} else throw callback('用户名密码错');
+				if (r.password!==md5(r.salt+password)) throw ('用户名密码错');
+			} else throw ('用户名密码错');
 			var now=new Date();
 			var rstr=randstring()+now.getTime();
 			var o=addAuth(rstr, r);//authedClients[rstr]=r[0];
