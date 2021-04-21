@@ -61,7 +61,7 @@ router.all('/return', (req, res)=>{
     res.send('everything is done');
 })
 
-router.all('/done', bodyParser.urlencoded({extended:true}), async function (req, res) {
+router.all('/done', bodyParser.json(), async function (req, res) {
     debugout('recharge notify', req.body);
     var {external_id:orderId, id:providerOrderId, amount, status}=req.body;
     amount=Number(amount);
@@ -76,7 +76,7 @@ router.all('/done', bodyParser.urlencoded({extended:true}), async function (req,
     }
 });
 
-router.all('/disburse_result', bodyParser.urlencoded({extended:true}), async function(req, res) {
+router.all('/disburse_result', bodyParser.json(), async function(req, res) {
     debugout('disburse notify', req.body);
     var {external_id:orderId, status, amount, id:providerOrderId}=req.body;
     amount=Number(amount);
