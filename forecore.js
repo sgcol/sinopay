@@ -8,8 +8,7 @@ const router=require('express').Router()
 , pify =require('pify')
 , url =require('url')
 , path =require('path')
-, decimalfy=require('./etc').decimalfy
-, dedecimal=require('./etc').dedecimal
+, {num2dec, decimalfy, dedecimal} =require('./etc')
 , objPath=require('object-path')
 , stringify=require('csv-stringify/lib/sync')
 , argv=require('yargs').argv
@@ -169,14 +168,14 @@ function start(err, db) {
 
 			await session.withTransaction( async ()=>{
 				// lock the account & outstandingAccount
-				await db.locks.findOneAndUpdate({_id:mer._id}, {$set:{disburseLock:{account:mer._id, pseudoRandom: ObjectId() }}}, {seesion});
+				await db.locks.findOneAndUpdate({_id:mer._id}, {$set:{disburseLock:{account:mer._id, pseudoRandom: ObjectId() }}}, {session});
 				var accountBalance=await getAccountBalance(mer._id);
 				if (accountBalance< (money+commission)) throw 'balance is not enough';
 				var orderId=new ObjectId();
 				var [,,providerOrderId]= await Promise.all([
 					db.bills.insertOne({_id:orderId, merchantOrderId:outOrderId, partnerId, merchantName:mer.name, userid:mer._id, money:money, paymentMethod:'disbursement', bank, branch, owner, account, provider:providerName, payment:mer.paymentMethod, time}, {session}),
 					db.accounts.insertOne({account:mer._id, balance:num2dec(-money-commission), payable:num2dec(money), commission:num2dec(commission), time, provider:providerName, ref_id:orderId, transactionNum:1}, {session}),
-					provider.disburse(insertedId, bank, owner, account, money)
+					provider.disburse(orderId.toString(), bank, owner, account, money)
 					// db.outstandingAccounts.insertOne({account:providerName, balance:num2dec(-money), payable:num2dec(money), time, ref_id:insertedId})
 				]);
 			},{

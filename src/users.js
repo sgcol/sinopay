@@ -34,9 +34,9 @@ const SaveWithNoteButton = ({ handleSubmitWithRedirect, acl, ...props }) => {
 			}
 
 			// form.change('share', Number((1-Number(formdata.share)/100).toFixed(4)))
-			var mdr=parseFloat(formdata.mdr);
-			if (mdr>=1) mdr=Number((mdr/100).toFixed(4));
-			form.change('mdr', mdr)
+			// var mdr=parseFloat(formdata.mdr);
+			// if (mdr>=1) mdr=Number((mdr/100).toFixed(4));
+			// form.change('mdr', mdr)
 
 			if (formdata.paymentMethod) {
 				for (var key in formdata.paymentMethod) {

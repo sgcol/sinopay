@@ -13,7 +13,7 @@ module.exports=function(cb) {
 			if (__stored_db) return r({db:__stored_db, easym:easym});
 			new easym.DbProvider().init(argv.mongo, 
 			{exists:[
-				{bills:{index:['status', 'time', 'type', 'checkout',
+				{bills:{index:['status', 'time', 'type', 'checkout', 'paymentMethod',
 					{userid:1, used:1, time:-1, lasttime:-1, paidmoney:1, money:1},
 					{time:1, provider:1, merchantName:1, status:1, checkout:1},
 				]}},
@@ -24,6 +24,7 @@ module.exports=function(cb) {
 				{'outstandingAccounts':{index:[{time:-1,  account:-1, subject:-1}, {account:1, subject:1, ref_id:1}]}},
 				'reconciliation',
 				{'logs':{capped:true, size:200*1024*1024, max:3650000}},
+				'locks',
 				{'settlements':{index:['time', 'mchId']}},
 				{notify:{capped:true, size:100*1024, max:1000000, index:'read'}},
 				'event_tracer',

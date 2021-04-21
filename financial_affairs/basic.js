@@ -342,10 +342,10 @@ async function reconciliation(date, providerName) {
 setInterval(reconciliation, 30*60*1000);
 
 const get=async (table, subject, account) =>{
-	var {db}=getDB();
+	var {db}=await getDB();
 	var op=[];
 	if (account) op.push({$match:{account}});
-	op.push({$group:{_id:'1', sum:{$sum:`${subject}`}}});
+	op.push({$group:{_id:'1', sum:{$sum:`$${subject}`}}});
 	var [rec]=await db[table].aggregate(op).toArray();
 	return rec.sum;
 }
