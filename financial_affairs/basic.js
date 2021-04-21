@@ -23,6 +23,7 @@ function guessId(id) {
 		if (rec.updateDescription && rec.updateDescription.updatedFields && rec.updateDescription.updatedFields.used===true) {
 			console.log(rec.updateDescription.updatedFields);
 			var {used, merchantid, money, provider, paidmoney, _id, time, rec_id, paymentMethod, status}=rec.fullDocument;
+			var now=time;
 			paidmoney=paidmoney||money;
 			switch (paymentMethod) {
 				case 'recharge':
@@ -31,7 +32,7 @@ function guessId(id) {
 					var session=db.mongoClient.startSession();
 					try {
 						await session.withTransaction(async ()=>{
-							var now=time, rec_id=new ObjectId();
+							var rec_id=new ObjectId();
 							var op2={account:provider, receivable:num2dec(paidmoney), recharge:num2dec(-paidmoney), time:now, ref_id:_id, op_id:rec_id};
 							await db.outstandingAccounts.insertOne(op2,{session});
 							await db.accounts.insertOne({...op2, account:merchantid}, {session});
