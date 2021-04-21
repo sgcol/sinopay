@@ -78,10 +78,11 @@ router.all('/done', bodyParser.json(), async function (req, res) {
 
 router.all('/disburse_result', bodyParser.json(), async function(req, res) {
     debugout('disburse notify', req.body);
-    var {external_id:orderId, status, amount, id:providerOrderId}=req.body;
+    var {external_id:orderId, status, amount, id:providerOrderId, failure_code}=req.body;
     amount=Number(amount);
     try {
         var {db}=await getDB();
+        if (failure_code=='INSUFFICIENT_BALANCE') status=failure_code;
         var {matchedCount}=await db.bills.updateOne({_id:ObjectId(orderId), paymentMethod:'disbursement', used:{$ne:true}}, {$set:{paidmoney:amount, providerOrderId, status, used:true}}, {w:1});
         if (matchedCount==0) throw 'Invalid external_id';
         return res.send({result:'ok'});

@@ -1,6 +1,6 @@
 const db_event=require('../dbwatcher')
 	, getDB=require('../db')
-	, {num2dec, decimalfy, dedecimal}=require('../etc')
+	, {num2dec, dec2num, decimalfy, dedecimal}=require('../etc')
 	, ObjectId=require('mongodb').ObjectId
 	, providerManager =require('../providers')
 	, {set:_set, get:_get} =require('object-path')
@@ -22,7 +22,7 @@ function guessId(id) {
 	db_event.when('bills', 'update', async (rec)=>{
 		if (rec.updateDescription && rec.updateDescription.updatedFields && rec.updateDescription.updatedFields.used===true) {
 			console.log(rec.updateDescription.updatedFields);
-			var {used, merchantid, money, provider, paidmoney, _id, time, rec_id, paymentMethod, status}=rec.fullDocument;
+			var {used, userid:merchantid, money, provider, paidmoney, _id, time, rec_id, paymentMethod, status, commission=0}=rec.fullDocument;
 			var now=time;
 			paidmoney=paidmoney||money;
 			switch (paymentMethod) {
@@ -47,9 +47,12 @@ function guessId(id) {
 					}
 				break;
 				case 'disbursement':
-					if (status!='COMPLETED') {
+					if (status=='FAILED') {
 						// refund, commission will be deduct anyway?
 						db.accounts.insertOne({account:merchantid, time:now, refund:true, ref_id:_id, op_id:rec_id, balance:num2dec(money), payable:num2dec(-money)});
+					} else if (status=='INSUFFICIENT_BALANCE') {
+						commission=dec2num(commission);
+						db.accounts.insertOne({account:merchantid, time:now, refund:true, ref_id:_id, op_id:rec_id, balance:num2dec(money+commission), payable:num2dec(-money), commission:num2dec(-commission)});
 					}
 				break;
 			}
