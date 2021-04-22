@@ -61,17 +61,26 @@ router.all('/return', (req, res)=>{
     res.send('everything is done');
 })
 
+const xenditPayment={
+	'VIRTUAL_ACCOUNT_AGGREGATOR':'va',
+    'BANK_TRANSFER':'va',
+	'EWALLET':'eWallet',
+	'CREDIT_CARD':'creditCard',
+	'DISBURSEMENT':'disbursement',
+}
+
 router.all('/done', bodyParser.json(), async function (req, res) {
     debugout('recharge notify', req.body);
-    var {external_id:orderId, id:providerOrderId, amount, status}=req.body;
+    var {external_id:orderId, id:providerOrderId, amount, status, payment_method}=req.body;
     amount=Number(amount);
     try {
-        var {db}=await getDB();
-        var {matchedCount}=await db.bills.updateOne({_id:ObjectId(orderId), used:{$ne:true}}, {$set:{providerOrderId}}, {w:1});
-        if (matchedCount==0) throw 'Invalid external_id';
-        await confirmOrder(orderId, amount);
+        // var {db}=await getDB();
+        // var {matchedCount}=await db.bills.updateOne({_id:ObjectId(orderId), used:{$ne:true}}, {$set:{providerOrderId, paymentMethod:xenditPayment[payment_method]}}, {w:1});
+        // if (matchedCount==0) throw 'Invalid external_id';
+        await confirmOrder(orderId, amount, {providerOrderId, paymentMethod:xenditPayment[payment_method]});
         return res.send({result:'ok'});
     } catch(e) {
+        if (e=='no such orderid'|| e=='used order') return res.status(500).send({err:'Invalid external_id'});
         return res.status(500).send({err:(typeof e==='object'?e.message:e)});
     }
 });

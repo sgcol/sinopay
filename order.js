@@ -81,7 +81,7 @@ function getOrderDetail(orderid, callback) {
 // 	});
 // }
 
-async function confirmOrder(orderid, recieved) {
+async function confirmOrder(orderid, recieved, extra) {
 	var testMode=false;
 	var {db}=await getDB(), _id=ObjectID(orderid);
 	var bill=await db.bills.findOne({_id});
@@ -93,7 +93,7 @@ async function confirmOrder(orderid, recieved) {
 	// 		writeConcern: { w: 'majority' }
 	// 	}
 	async function getItDone() {
-		var {value:r}=await db.bills.findOneAndUpdate({_id, used:{$ne:true}}, {$set:{used:true, status:'通知商户', paidmoney:recieved, lasttime:new Date()}})
+		var {value:r}=await db.bills.findOneAndUpdate({_id, used:{$ne:true}}, {$set:{used:true, status:'通知商户', paidmoney:recieved, lasttime:new Date(), ...extra}})
 		if (!r) throw ('used order');
 		// bill.paidmoney=received;
 		// get

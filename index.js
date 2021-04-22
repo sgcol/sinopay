@@ -99,6 +99,8 @@ getDB((err, db)=>{
 		}
 	}));
 })
+// demo
+app.all('/demo/result', httpf(()=>'got it'))
 
 app.listen(argv.port, function() {
 	console.log(('server is running @ '+argv.port).green);

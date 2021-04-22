@@ -124,7 +124,7 @@ function parseMDR(v) {
 }
 
 const defaultShare={
-	creditCards:{
+	creditCard:{
 		mdr:0.03, fix_fee:5000
 	},
 	eWallet:{

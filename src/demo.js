@@ -41,7 +41,7 @@ const Go=({providers, users})=>{
         }
         var now=new Date();
         var params={
-            cb_url:apiUrl+'/demo/result',
+            cb_url:apiUrl+'demo/result',
             currency:'CNY',
             partnerId:partner.merchantid,
             money:values.money,

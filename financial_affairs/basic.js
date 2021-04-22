@@ -47,10 +47,11 @@ function guessId(id) {
 					}
 				break;
 				case 'disbursement':
-					if (status=='FAILED') {
-						// refund, commission will be deduct anyway?
-						db.accounts.insertOne({account:merchantid, time:now, refund:true, ref_id:_id, op_id:rec_id, balance:num2dec(money), payable:num2dec(-money)});
-					} else if (status=='INSUFFICIENT_BALANCE') {
+					// if (status=='FAILED') {
+					// 	// refund, commission will be deduct anyway?
+					// 	db.accounts.insertOne({account:merchantid, time:now, refund:true, ref_id:_id, op_id:rec_id, balance:num2dec(money), payable:num2dec(-money)});
+					// } else if (status=='INSUFFICIENT_BALANCE') {
+					if (status!=='COMPLETED') {
 						commission=dec2num(commission);
 						db.accounts.insertOne({account:merchantid, time:now, refund:true, ref_id:_id, op_id:rec_id, balance:num2dec(money+commission), payable:num2dec(-money), commission:num2dec(-commission)});
 					}

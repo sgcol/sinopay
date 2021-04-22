@@ -14,6 +14,8 @@ export default (apiUrl) => ({
             localStorage.setItem('userInfo', JSON.stringify(o));
             localStorage.setItem('accToken', a);
             return Promise.resolve();
+        }).catch((e)=>{
+            return Promise.reject('the server is unreachable right now')
         })
     },
     // called when the user clicks on the logout button
@@ -44,7 +46,7 @@ export default (apiUrl) => ({
             u=JSON.parse(u);
             return Promise.resolve(u.acl);
         } catch(e) {
-            Promise.reject();
+            return Promise.reject();
         }
     },
     getIdentity: () =>{

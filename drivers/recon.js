@@ -52,8 +52,15 @@ router.post('/upload', upload.single('settlement'), (req, res)=>{
 	fs.createReadStream(req.file.path)
 	.pipe(csvParser())
 	.on('data', (line)=>{
-		var money=Number(line.amount), orderId=line['Transaction ID']||line.reference, settled=Number(line['Settlement Amount']), fee=0, paymentMethod=line.payment_method, time=new Date(line['created_date_iso']);
+		var money=Number(line.amount), 
+			orderId=line['Transaction ID']||line.reference, 
+			settled=Number(line['Settlement Amount']), 
+			fee=0, 
+			paymentMethod=line.payment_method, 
+			time=new Date(line['created_date_iso']),
+			status=line.status;
 		if (req.body.provider=='xendit') {
+			if (status!=='COMPLETED') return;
 			var reg_orderId=(/[a-f0-9]+/);
 			var selected=reg_orderId.exec(orderId);
 			if (!selected) return;
@@ -63,6 +70,7 @@ router.post('/upload', upload.single('settlement'), (req, res)=>{
 
 			var type=line.type;
 
+			if (type=='DIRECT_DISBURSEMENT_REFUND') return;
 			// check if it is a deposit
 			if (type==='VIRTUAL_ACCOUNT_DIRECT_DEPOSIT') {
 				confirmedOrders.push({originData:line, orderId, money, paymentMethod:'topup', time})
