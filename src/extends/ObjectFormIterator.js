@@ -223,7 +223,7 @@ export const ObjectFormIterator = props => {
                                                                     : undefined
                                                                 : input.props.label,
                                                         disabled,
-                                                        defaultValue:defaultValue[index][inputSource],
+                                                        defaultValue:get(defaultValue, [index, inputSource], null),
                                                         ...inputProps,
                                                     })}
                                                     record={
