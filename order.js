@@ -207,6 +207,7 @@ async function notifyMerchant(orderdata) {
 			, currency:orderdata.currency
 			, orderId:orderdata._id.toHexString()
 			, providerOrderId:orderdata.providerOrderId
+			, status:orderdata.status
 		})))
 		debugout('notifyMerchant', params);
 		const response=await fetch(orderdata.cb_url, {
@@ -221,7 +222,7 @@ async function notifyMerchant(orderdata) {
 		} catch(e) {}
 		if (ret && ret.err) throw ret.err;
 		retryNotifyList.delete(orderdata._id);
-		db.bills.updateOne({_id:orderdata._id}, {$set:{status:'complete', lasttime:new Date(), merchant_return:body}});
+		db.bills.updateOne({_id:orderdata._id}, {$set:{status:'COMPLETED', lasttime:new Date(), merchant_return:body}});
 	} catch (err) {
 		var rn=retryNotifyList.get(orderdata._id);
 		if (!rn) {

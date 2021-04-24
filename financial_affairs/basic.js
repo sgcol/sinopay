@@ -28,6 +28,7 @@ function guessId(id) {
 			switch (paymentMethod) {
 				case 'recharge':
 				case null:
+				case undefined:
 					// only recharge order
 					var session=db.mongoClient.startSession();
 					try {

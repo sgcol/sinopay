@@ -77,7 +77,7 @@ router.all('/done', bodyParser.json(), async function (req, res) {
         // var {db}=await getDB();
         // var {matchedCount}=await db.bills.updateOne({_id:ObjectId(orderId), used:{$ne:true}}, {$set:{providerOrderId, paymentMethod:xenditPayment[payment_method]}}, {w:1});
         // if (matchedCount==0) throw 'Invalid external_id';
-        await confirmOrder(orderId, amount, {providerOrderId, paymentMethod:xenditPayment[payment_method]});
+        await confirmOrder(orderId, amount, {providerOrderId, paymentMethod:xenditPayment[payment_method]||payment_method});
         return res.send({result:'ok'});
     } catch(e) {
         if (e=='no such orderid'|| e=='used order') return res.status(500).send({err:'Invalid external_id'});
@@ -92,10 +92,10 @@ router.all('/disburse_result', bodyParser.json(), async function(req, res) {
     try {
         var {db}=await getDB();
         if (failure_code=='INSUFFICIENT_BALANCE') status=failure_code;
-        var {matchedCount}=await db.bills.updateOne({_id:ObjectId(orderId), paymentMethod:'disbursement', used:{$ne:true}}, {$set:{paidmoney:amount, providerOrderId, status, used:true}}, {w:1});
-        if (matchedCount==0) throw 'Invalid external_id';
+        await confirmOrder(orderId, amount, {providerOrderId, status})
         return res.send({result:'ok'});
     } catch(e) {
+        if (e=='no such orderid'|| e=='used order') return res.status(500).send({err:'Invalid external_id'});
         return res.status(500).send({err:(typeof e==='object'?e.message:e)});
     }
 });
