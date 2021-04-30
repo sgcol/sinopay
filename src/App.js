@@ -37,7 +37,7 @@ const App = () => (
 				// <Resource key="userManager" name="userManager" icon={AccountTree} options={{label:"用户管理", isMenuParent:true}} />,
 					<Resource key="managers" name="managers" icon={SupervisorAccount} {...Managers} options={{label:'Administrators', menuParent:'userManager'}}/>,
 					<Resource key="users" name="users" icon={Apple} {...Users}  options={{label:'Partners', menuParent:'userManager'}}/>,
-					// <Resource key="agents" name="agents" icon={Apartment} {...Agents} options={{label:'代理', menuParent:'userManager'}}/>,
+					<Resource key="agents" name="agents" icon={Apartment} {...Agents} options={{label:'Agents', menuParent:'userManager'}}/>,
 				<Resource key="providers" name="providers" icon={SportsMotorsports} {...Providers} options={{label:'Providers'}}/>,
 				<Resource key="financial_recon" name="recon" icon={CloudDone} {...financial.Recon} options={{label:'Auto Reconcilition'}}/>,
 				<Resource key="financial_recon_manual" name="recon_manual" icon={PlaylistAddCheck} {...financial.ReconManual} options={{label:'Manual Reconcilition'}}/>,

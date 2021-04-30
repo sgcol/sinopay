@@ -12,7 +12,7 @@ import {
 	Labeled, LinearProgress, FieldTitle, isRequired, 
 } from 'react-admin';
 import { useForm } from 'react-final-form';
-import {DateTimeField, EscapedTextField, ObjectFormIterator} from './extends';
+import {DateTimeField, EscapedTextField, ShareSection, ObjectFormIterator} from './extends';
 import { Route } from 'react-router';
 import classnames from 'classnames';
 import md5 from 'md5';
@@ -139,65 +139,6 @@ const defaultShare={
 	disbursement:{
 		mdr:0, fix_fee:7500
 	}
-}
-const ShareSection =({
-	basePath,
-    className,
-    defaultValue,
-    label,
-    loaded,
-    loading,
-    children,
-    record,
-    resource,
-    source,
-    validate,
-    variant,
-    disabled,
-    margin = 'dense',
-    ...rest
-}) => {
-	if (loading) {
-        return (
-            <Labeled
-                label={label}
-                source={source}
-                resource={resource}
-                className={className}
-            >
-                <LinearProgress />
-            </Labeled>
-        );
-    }
-
-	return (
-        <FormControl
-            fullWidth
-            margin="normal"
-            className={className}
-            {...rest}
-        >
-            <InputLabel htmlFor={source} shrink>
-                <FieldTitle
-                    label={label}
-                    source={source}
-                    resource={resource}
-                    isRequired={isRequired(validate)}
-                />
-            </InputLabel>
-            {cloneElement(Children.only(children), {
-                fields: {...defaultValue, ...get(record, source)},
-				basePath:`${basePath}/${source}`,
-                record,
-                resource,
-                source,
-                variant,
-                margin,
-                disabled,
-				defaultValue
-            })}
-        </FormControl>
-    );
 }
 
 function CreateAndEditView(method, props) {

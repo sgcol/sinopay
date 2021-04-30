@@ -15,7 +15,11 @@ export default (apiUrl) => ({
             localStorage.setItem('accToken', a);
             return Promise.resolve();
         }).catch((e)=>{
-            return Promise.reject('the server is unreachable right now')
+            if (typeof e==='string') return Promise.reject(e);
+            if (typeof e==='object') {
+                return Promise.reject('the server is unreachable right now')
+            }
+            return Promise.reject(e.toString());
         })
     },
     // called when the user clicks on the logout button

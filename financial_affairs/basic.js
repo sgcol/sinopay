@@ -20,16 +20,23 @@ function guessId(id) {
 (async function order_received() {
 	var {db}=await getDB();
 	db_event.when('bills', 'update', async (rec)=>{
-		if (rec.updateDescription && rec.updateDescription.updatedFields && rec.updateDescription.updatedFields.used===true) {
+		if (rec.updateDescription && rec.updateDescription.updatedFields && rec.updateDescription.updatedFields.used===true && !rec.updateDescription.updatedFields.hasOwnProperty('refilled')) {
 			console.log(rec.updateDescription.updatedFields);
 			var {used, userid:merchantid, money, provider, paidmoney, _id, time, rec_id, paymentMethod, status, commission=0}=rec.fullDocument;
 			var now=time;
 			paidmoney=paidmoney||money;
 			switch (paymentMethod) {
-				case 'recharge':
-				case null:
-				case undefined:
-					// only recharge order
+				case 'disbursement':
+					// if (status=='FAILED') {
+					// 	// refund, commission will be deduct anyway?
+					// 	db.accounts.insertOne({account:merchantid, time:now, refund:true, ref_id:_id, op_id:rec_id, balance:num2dec(money), payable:num2dec(-money)});
+					// } else if (status=='INSUFFICIENT_BALANCE') {
+					if (status!=='COMPLETED') {
+						commission=dec2num(commission);
+						db.accounts.insertOne({account:merchantid, time:now, refund:true, ref_id:_id, op_id:rec_id, balance:num2dec(money+commission), payable:num2dec(-money), commission:num2dec(-commission)});
+					}
+				break;
+				default:
 					var session=db.mongoClient.startSession();
 					try {
 						await session.withTransaction(async ()=>{
@@ -45,16 +52,6 @@ function guessId(id) {
 						});
 					} finally {
 						await session.endSession();
-					}
-				break;
-				case 'disbursement':
-					// if (status=='FAILED') {
-					// 	// refund, commission will be deduct anyway?
-					// 	db.accounts.insertOne({account:merchantid, time:now, refund:true, ref_id:_id, op_id:rec_id, balance:num2dec(money), payable:num2dec(-money)});
-					// } else if (status=='INSUFFICIENT_BALANCE') {
-					if (status!=='COMPLETED') {
-						commission=dec2num(commission);
-						db.accounts.insertOne({account:merchantid, time:now, refund:true, ref_id:_id, op_id:rec_id, balance:num2dec(money+commission), payable:num2dec(-money), commission:num2dec(-commission)});
 					}
 				break;
 			}
@@ -140,7 +137,7 @@ async function handleReconciliation(reconContent, providerName) {
 		var {orderId, money=0, fee=0, paymentMethod='default', time} =order;
 		money=Number(money);
 		fee=Number(fee);
-		var {value:bill}=await db.bills.findOneAndUpdate({_id:guessId(orderId)}, {$set:{recon_id, paidmoney:money, used:true}});
+		var {value:bill}=await db.bills.findOneAndUpdate({_id:guessId(orderId)}, {$set:{recon_id, paidmoney:money, used:true, refilled:true}});
 		if (!bill) {
 			err.push({err:'orderId not exists', ...order})
 			continue;
