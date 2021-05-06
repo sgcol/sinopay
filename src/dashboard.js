@@ -4,6 +4,7 @@ import {
 } from 'react-admin';
 import {Button, Card, CardHeader, CardContent, Grid, Typography, Divider, makeStyles, Collapse} from '@material-ui/core';
 import Alert from '@material-ui/lab/Alert';
+import get from 'lodash/get'
 
 const useStyles = makeStyles((theme) => ({
   mb2:{
@@ -64,14 +65,27 @@ const DisableDebugMode=({user, ...rest})=>{
 		<Alert severity="warning" variant="filled" {...rest} action={action}>您正在使用调试接口，在正式上线之前请务必关闭调试模式</Alert>
 	</Collapse>
 }
+
+const userBalance=(identity, user)=>{
+	if (!identity) return null;
+	switch (identity.acl) {
+		case 'admin':
+		case 'manager':
+			return user.commission;
+		break;
+		default:
+			return user.balance;
+		break;
+	}
+}
 const DashboardShow =({options, permissions, ...rest})=> {
 	var classes=useStyles();
 	const { identity } = useGetIdentity();
 	const dp=useDataProvider();
 	var [user, setUser]=useState();
 	useEffect(()=>{
-		if (identity && identity.acl=='merchant') {
-			dp.getOne('users', {id:identity.id})
+		if (identity) {
+			dp.getOne('users', {id:(identity.acl==='admin' || identity.acl=='manager')?'system':identity.id})
 			.then(({data})=>setUser(data))
 			.catch(()=>{})
 		}
@@ -87,7 +101,7 @@ const DashboardShow =({options, permissions, ...rest})=> {
 	// 	<MarkDownView />
 	// </Show>
 	<div className="show-page">
-		<DisableDebugMode user={user} className={classes.mb2}/>
+		{get(identity, 'acl')==='merchant' && <DisableDebugMode user={user} className={classes.mb2}/>}
 		<Title
 			defaultTitle={options.label}
 	    />
@@ -95,7 +109,7 @@ const DashboardShow =({options, permissions, ...rest})=> {
 			<CardHeader title="Summary" className={classes.header}/>
 			<Grid container direction="row">
 				<Grid item xs={3} className={classes.item}>
-					<Typography variant="subtitle1" className={classes.subtitle}>{user.balance||0}</Typography>
+					<Typography variant="subtitle1" className={classes.subtitle}>{userBalance(identity, user)||0}</Typography>
 					<Typography variant="body2" gutterBottom>Balance</Typography>
 				</Grid>
 				<Divider orientation="vertical" flexItem />
@@ -103,11 +117,17 @@ const DashboardShow =({options, permissions, ...rest})=> {
 					<Typography variant="subtitle1" className={classes.subtitle}>{user.count||0}</Typography>
 					<Typography variant="body2" gutterBottom>Total Transaction</Typography>
 				</Grid>
-				<Divider orientation="vertical" flexItem />
-				<Grid item xs={3} className={classes.item}>
-					<Typography variant="subtitle1" className={classes.subtitle}>{user.receivable||0}</Typography>
-					<Typography variant="body2" gutterBottom>Receivable</Typography>
-				</Grid>
+				{
+					get(identity, 'acl')==='merchant'?
+					<>
+					<Divider orientation="vertical" flexItem />
+					<Grid item xs={3} className={classes.item}>
+						<Typography variant="subtitle1" className={classes.subtitle}>{user.receivable||0}</Typography>
+						<Typography variant="body2" gutterBottom>Receivable</Typography>
+					</Grid>
+					</>
+					:null
+				}
 			</Grid>
 		</Card>)
 		:null

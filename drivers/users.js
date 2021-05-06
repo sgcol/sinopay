@@ -34,14 +34,26 @@ userProvider.list=async (params, role, req)=>{
     ]);
     dedecimal(summary);
     var _map={};
-    summary.forEach(v=>{_map[v._id]=v});
-    return {
-        rows:users.rows.map(v=>{
+    summary.forEach(s=>{_map[s._id]=s});
+
+    // union users.rows & summary
+    var total=users.total;
+    var rows=users.rows.map(v=>{
             var s=_map[v._id];
-            if (s) return {...v, ...s};
+            if (s) {
+                var ret={...v, ...s};
+                s.__used=true;
+                return ret;
+            }
             return v;
-        }), 
-        total:users.total
+        });
+    summary.forEach(s=>{
+        if (s.__used) return;
+        total++;
+        rows.push(s);
+    })
+    return {
+        rows, total
     };
 }
 

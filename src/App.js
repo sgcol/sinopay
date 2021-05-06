@@ -32,6 +32,7 @@ const App = () => (
 	<Admin customRoutes={customRoutes} dataProvider={dataProvider} authProvider={createAuth(apiUrl)} /*layout={(props) => <Layout {...props} menu={TreeMenu}/>}*/>
 		{permissions => {
 			var ret=[];
+			ret.push(<Resource key="dashboard" name="dashboard" {...DashbaordPage} icon={Dashboard} options={{label:"Dashboard"}} />);
 			if (permissions==='admin'||permissions==='manager') {
 				ret= ret.concat([
 				// <Resource key="userManager" name="userManager" icon={AccountTree} options={{label:"用户管理", isMenuParent:true}} />,
@@ -43,9 +44,9 @@ const App = () => (
 				<Resource key="financial_recon_manual" name="recon_manual" icon={PlaylistAddCheck} {...financial.ReconManual} options={{label:'Manual Reconcilition'}}/>,
 				])
 			} else {
-				ret.push((
-					<Resource key="dashboard" name="dashboard" {...DashbaordPage} icon={Dashboard} options={{label:"Dashboard"}} />
-				))
+				// ret.push((
+				// 	<Resource key="dashboard" name="dashboard" {...DashbaordPage} icon={Dashboard} options={{label:"Dashboard"}} />
+				// ))
 			}
 			ret.push(<Resource key="bills" name="bills" icon={Receipt} {...Bills} options={{label:'Transactions'}}/>);
 			ret.push(<Resource key="disbursements" name="disbursements" icon={Payment} {...Disbursements} options={{label:'Disbursements'}}/>);
