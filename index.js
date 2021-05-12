@@ -16,6 +16,8 @@ const express =require('express')
 	.describe('host', 'bypass default host for testing alipay notification')
 	.argv
 , debugout=require('debugout')(argv.debugout)
+, multer=require('multer')
+, upload=multer({dest:'./providers/reconciliation/manual'})
 
 require('./financial_affairs');
 
@@ -30,6 +32,10 @@ if (argv.debugout) {
 	});
 }
 
+app.post('/upload', upload.single('settle'), function (req, res) {
+	console.log(req.file, req.body);
+})
+
 app.param('provider', function (req, res, next, external_provider) {
 	req.provider = external_provider;
 	next();
@@ -38,7 +44,7 @@ app.use('/pvd/:provider', function (req, res, next) {
 	debugout('provider', req.provider);
 	var pvd=getProviders(req.provider);
 	if (pvd) {
-		console.log('access pvd', req.url, req.body||'');
+		debugout('access pvd', req.url, req.body||'');
 		var router=pvd.router;
 		return router && router.call(null, req, res, function (err) { 
 			if (err) {
@@ -52,7 +58,7 @@ app.use('/pvd/:provider', function (req, res, next) {
 			return res.status(404).send({err:'no such function ' + req.url, detail:arguments}); 
 		});
 	}
-	res.end('pf ' + req.provider + ' not defined');
+	res.end('pvd ' + req.provider + ' not defined');
 });
 
 app.use(crud(dataDrivers));
@@ -77,10 +83,10 @@ getDB((err, db)=>{
 			var r=await db.users.findOne({_id:username});
 			if (!r) throw ('用户名密码错');
 			if (encryptedPassword) {
-				if (r.password!=encryptedPassword) throw callback('用户名密码错');
+				if (r.password!=encryptedPassword) throw ('用户名密码错');
 			} else if (password) {
-				if (r.password!==md5(r.salt+password)) throw callback('用户名密码错');
-			} else throw callback('用户名密码错');
+				if (r.password!==md5(r.salt+password)) throw ('用户名密码错');
+			} else throw ('用户名密码错');
 			var now=new Date();
 			var rstr=randstring()+now.getTime();
 			var o=addAuth(rstr, r);//authedClients[rstr]=r[0];
@@ -93,6 +99,8 @@ getDB((err, db)=>{
 		}
 	}));
 })
+// demo
+app.all('/demo/result', httpf(()=>'got it'))
 
 app.listen(argv.port, function() {
 	console.log(('server is running @ '+argv.port).green);

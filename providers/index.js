@@ -31,9 +31,9 @@ exports.getProvider=function(pid) {
 
 const filter = require('filter-object');
 async function bestProvider(money,mer, options) {
-	if (!mer.providers) throw ('联系对接小伙伴，他忘记给商户配置渠道了');
+	// if (!mer.providers) throw ('联系对接小伙伴，他忘记给商户配置渠道了');
 	var availbleProvders=filter(external_provider, (v, k)=>{
-		var opt= mer.providers[k];
+		var opt= mer.providers && mer.providers[k];
 		if (options) {
 			if (options.forecoreOnly && !(v.forwardOrder)) return false;
 		}

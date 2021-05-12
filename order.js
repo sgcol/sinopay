@@ -81,10 +81,10 @@ function getOrderDetail(orderid, callback) {
 // 	});
 // }
 
-async function confirmOrder(orderid, recieved) {
+async function confirmOrder(orderid, recieved, extra) {
 	var testMode=false;
 	var {db}=await getDB(), _id=ObjectID(orderid);
-	var bill=await db.bills.finOne({_id});
+	var bill=await db.bills.findOne({_id});
 	if (!bill) throw 'no such orderid';
 
 	// const session=db.mongoClient.startSession(), 
@@ -93,7 +93,7 @@ async function confirmOrder(orderid, recieved) {
 	// 		writeConcern: { w: 'majority' }
 	// 	}
 	async function getItDone() {
-		var {value:r}=await db.bills.findOneAndUpdate({_id, used:{$ne:true}}, {$set:{used:true, status:'通知商户', paidmoney:recieved, lasttime:new Date()}}, {session})
+		var {value:r}=await db.bills.findOneAndUpdate({_id, used:{$ne:true}}, {$set:{used:true, status:'通知商户', paidmoney:recieved, lasttime:new Date(), ...extra}})
 		if (!r) throw ('used order');
 		// bill.paidmoney=received;
 		// get
@@ -113,6 +113,7 @@ async function confirmOrder(orderid, recieved) {
 	// await session.withTransaction(getItDone, opt);
 	// session.endSession();
 	await getItDone();
+	bill.paidmoney=recieved;
 	sysevents.emit('orderConfirmed', bill);
 	notifyMerchant(bill);
 		// var shares=[];
@@ -206,6 +207,7 @@ async function notifyMerchant(orderdata) {
 			, currency:orderdata.currency
 			, orderId:orderdata._id.toHexString()
 			, providerOrderId:orderdata.providerOrderId
+			, status:orderdata.status
 		})))
 		debugout('notifyMerchant', params);
 		const response=await fetch(orderdata.cb_url, {
@@ -220,7 +222,7 @@ async function notifyMerchant(orderdata) {
 		} catch(e) {}
 		if (ret && ret.err) throw ret.err;
 		retryNotifyList.delete(orderdata._id);
-		db.bills.updateOne({_id:orderdata._id}, {$set:{status:'complete', lasttime:new Date(), merchant_return:body}});
+		db.bills.updateOne({_id:orderdata._id}, {$set:{status:'COMPLETED', lasttime:new Date(), merchant_return:body}});
 	} catch (err) {
 		var rn=retryNotifyList.get(orderdata._id);
 		if (!rn) {

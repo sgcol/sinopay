@@ -57,7 +57,7 @@ function dec2num(dec) {
 	function decimalfy(o) {
 		for (var k in o) {
 			if (typeof o[k]=='number') o[k]=Decimal128.fromString(''+o[k]);
-			if (typeof o[k]=='object') {
+			if (o[k]!==null && typeof o[k]=='object') {
 				if (o[k]._bsontype) continue;
 				decimalfy(o[k]);
 			}
@@ -70,5 +70,9 @@ function dec2num(dec) {
 		if (x==null) return false;
 		if (isNaN(Number(x))) return false;
 		return true;
+	}
+	exports.errfy=(e)=>{
+		if (e instanceof Error) return e.message;
+		return e;
 	}
 })(module.exports);

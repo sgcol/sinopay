@@ -8,14 +8,14 @@ const router=require('express').Router()
 , pify =require('pify')
 , url =require('url')
 , path =require('path')
-, decimalfy=require('./etc').decimalfy
-, dedecimal=require('./etc').dedecimal
+, {num2dec, decimalfy, dedecimal} =require('./etc')
 , objPath=require('object-path')
 , stringify=require('csv-stringify/lib/sync')
 , argv=require('yargs').argv
 , fse =require('fs-extra')
 , JSZip =require('jszip')
 , XLSX =require('xlsx')
+, {getAccountBalance, getOutstandingBalance} =require('./financial_affairs')
 
 const allPayType=['ALIPAYH5', 'WECHATPAYH5', 'UNIONPAYH5', 'ALIPAYAPP', 'WECHATPAYAPP', 'ALIPAYMINI', 'WECHATPAYMINI', 'ALIPAYPC', 'WECHATPAYPC', 'UNIONPAYPC'];
 
@@ -24,7 +24,10 @@ const {verifyAuth, verifyManager}=require('./auth.js');
 exports.router=router;
 
 function err_h(err, req, res, next) {
-	if (err) res.send({err:err});
+	if (err) {
+		res.set({'Access-Control-Allow-Origin':'*', 'Cache-Control':'max-age=0'});
+		res.send({err:err});
+	}
 	else next();
 }
 (function init(cb) {
@@ -82,6 +85,7 @@ function start(err, db) {
 					, provider:provider.name||provider.internal_name
 					, providerOrderId:''
 					, share:merchant.share
+					, payment:merchant.paymentMethod
 					, money:money
 					, paidmoney:-1
 					, currency: currency
@@ -95,7 +99,9 @@ function start(err, db) {
 					,{w:1})
 			// ])
 			var ret=await provider.forwardOrder(params);
-			db.bills.updateOne({_id:orderId}, {$set:{providerOrderId:ret.providerOrderId, status:'forward'}});
+			var upd={status:'forward'};
+			if (ret.providerOrderId) upd.providerOrderId=ret.providerOrderId;
+			db.bills.updateOne({_id:orderId}, {$set:upd});
 			return callback(null, mchSign(merchant, {...ret, outOrderId, orderId:params.orderId}));
 		}catch(e) {
 			return callback(e)
@@ -146,37 +152,43 @@ function start(err, db) {
 			callback(null, result);
 		} catch(e) {callback(e)}
 	}));
-	router.all('/disburse', verifyMchSign, err_h, httpf({partnerId:'string', outOrderId:'string', money:'number', bank:'string', branch:'?string', owner:'string', account:'string', callback:true}, 
-	async function(partnerId, outOrderId, money, bank, branch, owner, account,callback) {
+	router.all('/disburse', verifyMchSign, err_h, httpf({partnerId:'string', outOrderId:'string', money:'number', bank:'string', branch:'?string', owner:'string', account:'string', cb_url:'string', callback:true}, 
+	async function(partnerId, outOrderId, money, bank, branch, owner, account, cb_url, callback) {
+		var session=db.mongoClient.startSession();
 		try {
-			var order=await db.withdrawal.findOneAndUpdate({merchantOrderId:outOrderId}, {$setOnInsert:
-			{
-				merchantOrderId:outOrderId
-				, parnterId:partnerId
-				, userid:merchant._id
-				, merchantid:merchant.merchantid
-				, merchantName:merchant.name
-				, provider:provider.name||provider.internal_name
-				, providerOrderId:''
-				, money:money
-				, payout:-1
-				, currency: currency
-				, type: params.type
-				, time:new Date()
-				, lasttime:new Date()
-				, lasterr:''
-			}});
-			if (!order) return callback('无此订单');
-			if (order.merchantid!=partnerId) return callback('该订单不属于指定的partner');
-			if (!order.provider || !order.paidmoney) return callback('订单尚未支付');
-			var pvd=getProvider(order.provider);
-			if (!pvd) return callback('订单尚未支付');
-			if (!pvd.refund) return callback('提供方不支持退单');
-			var merchant=await db.users.findOne({_id:partnerId});
-			var result=await pvd.refund(order, money, merchant);
-			// await db.bills.updateOne({_id:order._id}, {$set:{status:'refund'}}, {w:1});
-			callback(null, result);
-		} catch(e) {callback(e)}
+			var time=new Date();
+			var mer=this.req.merchant;
+			var {mdr, fix_fee}=objPath.get(mer, ['paymentMethod', 'disbursement'], {mdr:0, fix_fee:0});
+			var commission=Number((money*mdr+fix_fee).toFixed(2));
+
+			var provider=await bestProvider(money, mer);
+			if (!provider) throw 'no provider found ';
+			if (!provider.disburse) throw 'the provider do not support disbursement';
+			var providerName=provider.name, orderId, providerOrderId;
+
+			await session.withTransaction( async ()=>{
+				// lock the account & outstandingAccount
+				await db.locks.findOneAndUpdate({_id:mer._id}, {$set:{disburseLock:{account:mer._id, pseudoRandom: ObjectId() }}}, {session});
+				var accountBalance=await getAccountBalance(mer._id);
+				if (accountBalance< (money+commission)) throw 'balance is not enough';
+				var orderId=new ObjectId();
+				var [,,providerOrderId]= await Promise.all([
+					db.bills.insertOne({_id:orderId, merchantOrderId:outOrderId, partnerId, merchantName:mer.name, userid:mer._id, money:money, paymentMethod:'disbursement', bank, branch, owner, account, provider:providerName, payment:mer.paymentMethod, cb_url, time}, {session}),
+					db.accounts.insertOne({account:mer._id, balance:num2dec(-money-commission), payable:num2dec(money), commission:num2dec(commission), time, provider:providerName, ref_id:orderId, transactionNum:1}, {session}),
+					provider.disburse(orderId.toString(), bank, owner, account, money)
+					// db.outstandingAccounts.insertOne({account:providerName, balance:num2dec(-money), payable:num2dec(money), time, ref_id:insertedId})
+				]);
+			},{
+				readPreference: 'primary',
+				readConcern: { level: 'local' },
+				writeConcern: { w: 'majority' }
+			})
+			callback(null, {outOrderId, orderId, providerOrderId, money, bank, branch, owner, account});
+		} catch(e) {
+			callback(e);
+		} finally {
+			await session.endSession();
+		}
 	}));
 	router.all('/settlements', verifyAuth, httpf({from:'?date', to:'?date', sort:'?string', order:'?string', offset:'?number', limit:'?number', callback:true}, 
 	async function(from, to, sort, order, offset, limit, callback) {
