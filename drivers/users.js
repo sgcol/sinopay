@@ -23,11 +23,17 @@ userProvider.list=async (params, role, req)=>{
     if (!aclgte(role, 'manager')) {
         params.filter._id=req.auth._id;
     }
+    const {db}=await getDB();
     var cond={account:{$ne:'user'}};
     if (params.filter._id) cond.account=params.filter._id;
     var groupby='$account';
 
-    const {db}=await getDB();
+    if (params.filter._id=='system') {
+        var summary=await db.accounts.aggregate([{$match:cond}, {$group:{_id:groupby, balance:{$sum:'$balance'}, commission:{$sum:'$commission'}, count:{$sum:1}}}]).toArray();
+        dedecimal(summary);
+        return {rows:summary, total:1};
+    }
+
     var [summary, users]=await Promise.all([
         db.accounts.aggregate([{$match:cond}, {$group:{_id:groupby, balance:{$sum:'$balance'}, commission:{$sum:'$commission'}, count:{$sum:1}}}]).toArray(),
         _list(params, role, req)
@@ -47,11 +53,11 @@ userProvider.list=async (params, role, req)=>{
             }
             return v;
         });
-    summary.forEach(s=>{
-        if (s.__used) return;
-        total++;
-        rows.push(s);
-    })
+    // summary.forEach(s=>{
+    //     if (s.__used) return;
+    //     total++;
+    //     rows.push(s);
+    // })
     return {
         rows, total
     };
