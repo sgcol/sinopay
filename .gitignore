@@ -26,6 +26,6 @@ yarn-error.log*
 package-lock.json
 
 # downloads
-/p:roviders/reconciliation
+/providers/reconciliation
 /reconciliation
 

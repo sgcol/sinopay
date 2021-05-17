@@ -101,18 +101,16 @@ const supportedType={WECHATPAYQRCODE:'0402', ALIPAYQRCODE:'0401', UNIFIEDQRCODE:
 
 router.all('/return', (req, res)=>{
 })
-router.all('/done', bodyParser.urlencoded(), (req, res) =>{
+router.all('/done', bodyParser.urlencoded({extended:true}), async (req, res) =>{
 	var {data, sign}=req.body;
 	try {
 		var payload=JSON.parse(data);
+		var {orderCode:orderid, buyerPayAmount:total_amount} =payload.body;
+		await confirmOrder(orderid, total_amount, total_amount);
+		res.send('respCode=000000');
 	} catch(e) {
 		return res.end();
 	}
-	var {orderCode:orderid, buyerPayAmount:total_amount} =payload.body;
-	confirmOrder(orderid, total_amount, total_amount, (err)=>{
-		if (err && err!='used order') return res.end();
-		res.send('respCode=000000');
-	})
 });
 var forwardOrder =async function(params, callback) {
 	callback=callback||function(err, r) {

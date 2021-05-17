@@ -152,8 +152,12 @@ function start(err, db) {
 			callback(null, result);
 		} catch(e) {callback(e)}
 	}));
-	router.all('/disburse', verifyMchSign, err_h, httpf({partnerId:'string', outOrderId:'string', money:'number', bank:'string', branch:'?string', owner:'string', account:'string', cb_url:'string', callback:true}, 
-	async function(partnerId, outOrderId, money, bank, branch, owner, account, cb_url, callback) {
+	router.all('/disburse', verifyMchSign, err_h, httpf({partnerId:'string', outOrderId:'string', money:'number', bank:'string', branch:'?string', owner:'string', account:'string', province:'?string', city:'?string', cb_url:'string', callback:true}, 
+	async function(partnerId, outOrderId, money, bank, branch, owner, account, cb_url, province, city, callback) {
+		var req=this.req;
+		var basepath=argv.host||url.format({protocol:req.protocol, host:req.headers.host, pathname:path.resolve(req.baseUrl, '..')});
+		if (basepath.slice(-1)!='/') basepath=basepath+'/';
+
 		var session=db.mongoClient.startSession();
 		try {
 			var time=new Date();
@@ -173,9 +177,9 @@ function start(err, db) {
 				if (accountBalance< (money+commission)) throw 'balance is not enough';
 				var orderId=new ObjectId();
 				var [,,providerOrderId]= await Promise.all([
-					db.bills.insertOne({_id:orderId, merchantOrderId:outOrderId, partnerId, merchantName:mer.name, userid:mer._id, money:money, paymentMethod:'disbursement', bank, branch, owner, account, provider:providerName, payment:mer.paymentMethod, cb_url, time}, {session}),
+					db.bills.insertOne({_id:orderId, merchantOrderId:outOrderId, partnerId, merchantName:mer.name, userid:mer._id, money:money, paymentMethod:'disbursement', bank, branch, owner, account, provider:providerName, province, city, payment:mer.paymentMethod, cb_url, time}, {session}),
 					db.accounts.insertOne({account:mer._id, balance:num2dec(-money-commission), payable:num2dec(money), commission:num2dec(commission), time, provider:providerName, ref_id:orderId, transactionNum:1}, {session}),
-					provider.disburse(orderId.toString(), bank, owner, account, money)
+					provider.disburse(orderId.toString(), bank, owner, account, money, branch, province, city, basepath)
 					// db.outstandingAccounts.insertOne({account:providerName, balance:num2dec(-money), payable:num2dec(money), time, ref_id:insertedId})
 				]);
 			},{
@@ -183,7 +187,7 @@ function start(err, db) {
 				readConcern: { level: 'local' },
 				writeConcern: { w: 'majority' }
 			})
-			callback(null, {outOrderId, orderId, providerOrderId, money, bank, branch, owner, account});
+			callback(null, {outOrderId, orderId, providerOrderId, money, bank, branch, owner, account, province, city});
 		} catch(e) {
 			callback(e);
 		} finally {
