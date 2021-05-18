@@ -231,7 +231,8 @@ async function handleReconciliation(reconContent, providerName) {
 				fee=Number(fee);
 				if (!money) continue;
 				// check all confirmedOrder exists
-				var {_id:ref_id, userid:merchantid, time:billTime, share, payment={}}=bill;
+				var {_id:ref_id, userid:merchantid, time:billTime, share, payment}=bill;
+				payment=payment||{};
 				if (!billTime) billTime=time;	 
 				if (!(billTime instanceof Date)) billTime=new Date(billTime);
 
