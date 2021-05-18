@@ -23,25 +23,43 @@ userProvider.list=async (params, role, req)=>{
     if (!aclgte(role, 'manager')) {
         params.filter._id=req.auth._id;
     }
+    const {db}=await getDB();
     var cond={account:{$ne:'user'}};
     if (params.filter._id) cond.account=params.filter._id;
     var groupby='$account';
 
-    const {db}=await getDB();
+    if (params.filter._id=='system') {
+        var summary=await db.accounts.aggregate([{$match:cond}, {$group:{_id:groupby, balance:{$sum:'$balance'}, commission:{$sum:'$commission'}, count:{$sum:1}}}]).toArray();
+        dedecimal(summary);
+        return {rows:summary, total:1};
+    }
+
     var [summary, users]=await Promise.all([
         db.accounts.aggregate([{$match:cond}, {$group:{_id:groupby, balance:{$sum:'$balance'}, commission:{$sum:'$commission'}, count:{$sum:1}}}]).toArray(),
         _list(params, role, req)
     ]);
     dedecimal(summary);
     var _map={};
-    summary.forEach(v=>{_map[v._id]=v});
-    return {
-        rows:users.rows.map(v=>{
+    summary.forEach(s=>{_map[s._id]=s});
+
+    // union users.rows & summary
+    var total=users.total;
+    var rows=users.rows.map(v=>{
             var s=_map[v._id];
-            if (s) return {...v, ...s};
+            if (s) {
+                var ret={...v, ...s};
+                s.__used=true;
+                return ret;
+            }
             return v;
-        }), 
-        total:users.total
+        });
+    // summary.forEach(s=>{
+    //     if (s.__used) return;
+    //     total++;
+    //     rows.push(s);
+    // })
+    return {
+        rows, total
     };
 }
 

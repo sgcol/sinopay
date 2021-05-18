@@ -342,6 +342,7 @@ async function reconciliation(date, providerName) {
 	return updsNum;
 }
 
+setTimeout(reconciliation, 1000);
 setInterval(reconciliation, 30*60*1000);
 
 const get=async (table, subject, account) =>{

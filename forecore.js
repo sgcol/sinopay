@@ -82,7 +82,7 @@ function start(err, db) {
 					, merchantid:merchant.merchantid
 					, merchantName:merchant.name
 					, mer_userid:mchuserid
-					, provider:provider.name||provider.internal_name
+					, provider:provider.internal_name
 					, providerOrderId:''
 					, share:merchant.share
 					, payment:merchant.paymentMethod

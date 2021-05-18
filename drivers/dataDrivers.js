@@ -111,4 +111,4 @@ function createDriver(collectName, options) {
     }
 }
 
-module.exports= {createDriver, keepOrignId, objectId};
+module.exports= {createDriver, keepOrignId, objectId, guessId};

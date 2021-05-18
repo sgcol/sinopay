@@ -37,7 +37,7 @@ module.exports={
 			filter.account=req.auth._id;
 		}
 		var groupby=null;
-		if (!filter.account) filter.account={$ne:'user'};
+		if (!filter.account) filter.account={$nin:['user', 'system']};
 		else groupby='$account';
 
 		const {db}=await getDB();

@@ -80,10 +80,13 @@ router.all('/return', (req, res)=>{
 router.all('/done', bodyParser.urlencoded({extended:true}), async (req, res) =>{
 	var {status, customerid, sdpayno, sdorderno, total_fee, paytype, sign}=req.body;
 	var wantedSign=md5(`customerid=${customerid}&status=${status}&sdpayno=${sdpayno}&sdorderno=${sdorderno}&total_fee=${total_fee}&paytype=${paytype}&${userkey}`);
-	if (wantedSign!=sign) return res.status(500).send('sign err');
+	if (wantedSign!=sign) {
+		debugout(wantedSign);
+		return res.status(500).send('sign err');
+	}
 	total_fee=Number(total_fee);
 	try {
-		await confirmOrder(sdorderno, total_fee, total_fee, {providerOrderId:sdpayno});
+		await confirmOrder(sdorderno, total_fee, {providerOrderId:sdpayno});
 		res.send('success');
 	} catch(e) {
 		res.status(500).send(e);
@@ -139,9 +142,10 @@ var forwardOrder =async function(params, callback) {
 var getReconciliation=async function(from, date, forceRecon) {
 	var {db}=await getDB();
 	var day=datestring(date)
-	var bills=await db.bills.find({used:true, recon_id:null}).toArray();
+	var bills=await db.bills.find({provider:'dreamyun', used:true, recon_id:null}).toArray();
 	bills.forEach(bill=>{
-		bill.fee=Number(bill.money*0.014);
+		bill.fee=Number((bill.money*0.014).toFixed(4));
+		bill.orderId=bill._id;
 	});
 	return {date, confirmedOrders:bills, recon_tag:day}
 }
@@ -149,7 +153,7 @@ var getReconciliation=async function(from, date, forceRecon) {
 exports.forwardOrder=forwardOrder;
 exports.getReconciliation=getReconciliation;
 
-exports.disburse =async function withdrawal(orderId, bank, owner, account, money, branch, province, city, _host) {
+/*exports.disburse =async function withdrawal(orderId, bank, owner, account, money, branch, province, city, _host) {
 	var bankcode=supportedBanks[bank];
 	if (!bankcode) throw '不支持的银行';
 	var data = {
@@ -173,7 +177,7 @@ exports.disburse =async function withdrawal(orderId, bank, owner, account, money
 	if (response.status!=='0' || response.status!=='2' || response.status!=='10006') throw(response.msg);
 	return response.sdpayno;
 }
-
+*/
 const supportedBanks={
 '国家开发银行':'CDB',
 '中国农业银行':'ABC',
