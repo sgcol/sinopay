@@ -256,8 +256,7 @@ async function handleReconciliation(reconContent, providerName) {
 				var paymentParams=payment[paymentMethod];
 				if (!paymentParams) {
 					var u=await getUser(merchantid);
-					paymentParams=u.paymentMethod[paymentMethod];
-					if (paymentParams==null) paymentParams={mdr:u.mdr, fix_fee:u.fix_fee};
+					paymentParams=_get(u, ['paymentMethod', paymentMethod], {mdr:u.mdr, fix_fee:u.fix_fee});
 				}
 				var {mdr, fix_fee}=paymentParams||{};
 				if (!mdr) mdr=1-share;
