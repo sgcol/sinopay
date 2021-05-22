@@ -231,7 +231,8 @@ async function handleReconciliation(reconContent, providerName) {
 				fee=Number(fee);
 				if (!money) continue;
 				// check all confirmedOrder exists
-				var {_id:ref_id, userid:merchantid, time:billTime, share, payment={}}=bill;
+				var {_id:ref_id, userid:merchantid, time:billTime, share, payment}=bill;
+				payment=payment||{};
 				if (!billTime) billTime=time;	 
 				if (!(billTime instanceof Date)) billTime=new Date(billTime);
 
@@ -255,8 +256,7 @@ async function handleReconciliation(reconContent, providerName) {
 				var paymentParams=payment[paymentMethod];
 				if (!paymentParams) {
 					var u=await getUser(merchantid);
-					paymentParams=u.paymentMethod[paymentMethod];
-					if (paymentParams==null) paymentParams={mdr:u.mdr, fix_fee:u.fix_fee};
+					paymentParams=_get(u, ['paymentMethod', paymentMethod], {mdr:u.mdr, fix_fee:u.fix_fee});
 				}
 				var {mdr, fix_fee}=paymentParams||{};
 				if (!mdr) mdr=1-share;
@@ -342,6 +342,7 @@ async function reconciliation(date, providerName) {
 	return updsNum;
 }
 
+setTimeout(reconciliation, 1000);
 setInterval(reconciliation, 30*60*1000);
 
 const get=async (table, subject, account) =>{
