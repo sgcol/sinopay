@@ -109,7 +109,7 @@ var forwardOrder =async function(params, callback) {
     var {orderId:externalID, money:amount, email:payerEmail='userrefused@to.provide', desc:description='Default goods', return_url, _host} =params;
     try {
         var result=await xendit_i.createInvoice({externalID, amount, payerEmail, description, currency:'IDR', successRedirectURL:return_url||(_host+'pvd/xendit/return')});
-		updateOrder(params.orderId, {status:'待支付', lasttime:new Date(), xendit_ret:result});
+		updateOrder(params.orderId, {status:'待支付', currency:'IDR', lasttime:new Date(), xendit_ret:result});
 		var ret={url:result.invoice_url};
 		ret.pay_type=params.type;
         ret.providerOrderId=result.id;

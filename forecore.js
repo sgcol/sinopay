@@ -15,7 +15,7 @@ const router=require('express').Router()
 , fse =require('fs-extra')
 , JSZip =require('jszip')
 , XLSX =require('xlsx')
-, {getAccountBalance, getOutstandingBalance} =require('./financial_affairs')
+, {balance, outstandingBalance} =require('./financial_affairs')
 
 const allPayType=['ALIPAYH5', 'WECHATPAYH5', 'UNIONPAYH5', 'ALIPAYAPP', 'WECHATPAYAPP', 'ALIPAYMINI', 'WECHATPAYMINI', 'ALIPAYPC', 'WECHATPAYPC', 'UNIONPAYPC'];
 
@@ -154,8 +154,8 @@ function start(err, db) {
 	}));
 	router.all('/disburse', verifyMchSign, err_h, httpf({partnerId:'string', outOrderId:'string', money:'number', bank:'string', branch:'?string', owner:'string', account:'string', cb_url:'string', callback:true}, 
 	async function(partnerId, outOrderId, money, bank, branch, owner, account, cb_url, callback) {
-		var session=db.mongoClient.startSession();
 		try {
+			if (money<0) throw 'money must be positive';
 			var time=new Date();
 			var mer=this.req.merchant;
 			var {mdr, fix_fee}=objPath.get(mer, ['paymentMethod', 'disbursement'], {mdr:0, fix_fee:0});
@@ -166,28 +166,14 @@ function start(err, db) {
 			if (!provider.disburse) throw 'the provider do not support disbursement';
 			var providerName=provider.name, orderId, providerOrderId;
 
-			await session.withTransaction( async ()=>{
-				// lock the account & outstandingAccount
-				await db.locks.findOneAndUpdate({_id:mer._id}, {$set:{disburseLock:{account:mer._id, pseudoRandom: ObjectId() }}}, {session});
-				var accountBalance=await getAccountBalance(mer._id);
-				if (accountBalance< (money+commission)) throw 'balance is not enough';
-				var orderId=new ObjectId();
-				var [,,providerOrderId]= await Promise.all([
-					db.bills.insertOne({_id:orderId, merchantOrderId:outOrderId, partnerId, merchantName:mer.name, userid:mer._id, money:money, paymentMethod:'disbursement', bank, branch, owner, account, provider:providerName, payment:mer.paymentMethod, cb_url, time}, {session}),
-					db.accounts.insertOne({account:mer._id, balance:num2dec(-money-commission), payable:num2dec(money), commission:num2dec(commission), time, provider:providerName, ref_id:orderId, transactionNum:1}, {session}),
-					provider.disburse(orderId.toString(), bank, owner, account, money)
-					// db.outstandingAccounts.insertOne({account:providerName, balance:num2dec(-money), payable:num2dec(money), time, ref_id:insertedId})
-				]);
-			},{
-				readPreference: 'primary',
-				readConcern: { level: 'local' },
-				writeConcern: { w: 'majority' }
-			})
+			var accountBalance=(await balance(mer._id)).get(mer._id);
+			if (accountBalance< money) throw 'balance is not enough';
+			var orderId=new ObjectId();
+			var providerOrderId= await provider.disburse(orderId.toString(), bank, owner, account, money);
+			await db.bills.insertOne({_id:orderId, merchantOrderId:outOrderId, providerOrderId, partnerId, merchantName:mer.name, userid:mer._id, money:money, paymentMethod:'disbursement', bank, branch, owner, account, provider:providerName, payment:mer.paymentMethod, cb_url, time}),
 			callback(null, {outOrderId, orderId, providerOrderId, money, bank, branch, owner, account});
 		} catch(e) {
 			callback(e);
-		} finally {
-			await session.endSession();
 		}
 	}));
 	router.all('/settlements', verifyAuth, httpf({from:'?date', to:'?date', sort:'?string', order:'?string', offset:'?number', limit:'?number', callback:true}, 

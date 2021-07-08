@@ -3,6 +3,7 @@ const {objectId}=require('./dataDrivers.js')
 	, getDB =require('../db.js')
 	, {notifyMerchant}=require('../order.js')
 	, {dedecimal, isValidNumber} =require('../etc.js')
+	, {balance, commission} =require('../financial_affairs')
 
 module.exports={
 	list:async (params, role, req)=>{
@@ -41,8 +42,14 @@ module.exports={
 		else groupby='$account';
 
 		const {db}=await getDB();
-		var rows=await db.accounts.aggregate([{$match:filter}, {$group:{_id:groupby, balance:{$sum:'$balance'}, commission:{$sum:'$commission'}, count:{$sum:1}}}]).toArray();
-		dedecimal(rows);
+		var [_b, _c, _cnt]=await Promise.all([
+			db.accounts.aggregate([{$match:{...filter, balance:{$ne:null}}}, {$group:{_id:groupby, check:{$max:'$_id'}}}, {$lookup:{from:'accounts', localField:'check', foreignField:'_id', as:'data'}}]).toArray(),
+			db.accounts.aggregate([{$match:{...filter, commission:{$ne:null}}}, {$group:{_id:groupby, check:{$max:'$_id'}}}, {$lookup:{from:'accounts', localField:'check', foreignField:'_id', as:'data'}}]).toArray(),
+			db.accounts.aggregate([{$match:filter}, {$group:{_id:groupby, count:{$sum:1}}}]).toArray(),
+		])
+		var b=new Map(_b.map(v=>[v.data[0].account, v.data[0].balance]));
+		var c=new Map(_c.map(v=>[v.data[0].account, v.data[0].commission]));
+		var rows=_cnt.map(v=>({_id:v._id, count:v.count||0, balance:b.get(v._id)||0, commission:c.get(v._id)||0}));
 		return {rows, total:rows.length};
 	}
 }

@@ -20,6 +20,7 @@ import get from 'lodash/get'
 
 const path=require('path');
 const objPath =require('object-path');
+const {defaultShare} =require('./config');
 
 const SaveWithNoteButton = ({ handleSubmitWithRedirect, acl, ...props }) => {
 		const { redirect } = props;
@@ -123,23 +124,23 @@ function parseMDR(v) {
 	return ret;
 }
 
-const defaultShare={
-	creditCard:{
-		mdr:0.03, fix_fee:5000
-	},
-	eWallet:{
-		mdr:0.028, fix_fee:0
-	},
-	va:{
-		mdr:0, fix_fee:7500
-	},
-	retailOutlets:{
-		mdr:0, fix_fee:8500
-	},
-	disbursement:{
-		mdr:0, fix_fee:7500
-	}
-}
+// const defaultShare={
+// 	creditCard:{
+// 		mdr:0.03, fix_fee:5000
+// 	},
+// 	eWallet:{
+// 		mdr:0.028, fix_fee:0
+// 	},
+// 	va:{
+// 		mdr:0, fix_fee:7500
+// 	},
+// 	retailOutlets:{
+// 		mdr:0, fix_fee:8500
+// 	},
+// 	disbursement:{
+// 		mdr:0, fix_fee:7500
+// 	}
+// }
 
 function CreateAndEditView(method, props) {
 	const classes=useStyles(props);
@@ -190,7 +191,7 @@ function CreateAndEditView(method, props) {
 				<BooleanInput source="debugMode" />
 				<ShareSection source="paymentMethod" label="Share by payment" defaultValue={defaultShare} >
 					<ObjectFormIterator>
-						<TextInput source="mdr" variant="standard" label="mdr"/>
+						<TextInput source="mdr" variant="standard" label="mdr" />
 						<TextInput className={classnames(classes.fixFee, className)} source="fix_fee" variant="standard" label="fixed fee"/>
 					</ObjectFormIterator>
 				</ShareSection>
@@ -221,6 +222,7 @@ export const UserShow =props=> (
 			<TextField source="key" />
 			<TextField label="partnerId" source="merchantid" />
 			<NumberField label="账户余额" source="balance" options={{ minimumFractionDigits: 2, maximumFractionDigits: 2}} />
+			<NumberField label="应收" source="receivable" options={{ minimumFractionDigits: 2, maximumFractionDigits: 2}} />
 			<NumberField label="手续费" source="commission" options={{ minimumFractionDigits: 2, maximumFractionDigits: 2}}/>
 		</SimpleShowLayout>
 	</Show>
@@ -301,8 +303,9 @@ const UserList =(props) => {
 					{/* <TextField source="key" />
 					<TextField source="merchantid" /> */}
 					<BooleanField source="debugMode" label="调试"/>
-					<NumberField source="share" label="分成" options={{style:"percent"}}/>
+					{/* <NumberField source="share" label="分成" options={{style:"percent"}}/> */}
 					<NumberField label="账户余额" source="balance" options={{ minimumFractionDigits: 2, maximumFractionDigits: 2}}/>
+					<NumberField label="应收" source="receivable" options={{ minimumFractionDigits: 2, maximumFractionDigits: 2}}/>
 					<NumberField label="手续费" source="commission" options={{ minimumFractionDigits: 2, maximumFractionDigits: 2}}/>
 					<EditButton />
 					<ShowButton />

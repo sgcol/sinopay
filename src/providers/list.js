@@ -52,7 +52,7 @@ const FullProviderInfo =({data, ids, ...rest})=>{
 	return 	(<Datagrid>
 		<TextField source="name" />
 		<BooleanField source="forecore" label="四方"/>
-		<BooleanField source="withdrawal" label="支持提款"/>
+		<BooleanField source="withdrawal" label="支持代付"/>
 		<BooleanField source="reconciliation" label="自动对账"/>
 		<ArrayField source="supportedMethods" label="支付方式">
 			<SingleFieldList>

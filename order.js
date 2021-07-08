@@ -81,111 +81,31 @@ function getOrderDetail(orderid, callback) {
 // 	});
 // }
 
+async function cancelOrder(orderid, extra) {
+	var {db}=await getDB(), _id=ObjectID(orderid);
+
+	var {value:r}=await db.bills.findOneAndUpdate({_id, paymentMethod:'disbursement', used:{$ne:true}}, {$set:{...extra, used:true, notify_status:'通知商户', status:'CANCELED', lasttime:new Date()}})
+	if (!r) {
+		var bill=await db.bills.findOne({_id});
+		if (!bill) throw 'no such orderid';
+		if (bill.paymentMethod!='disbursement') throw 'only the disburse order can be canceled'.
+		throw ('used order');
+	}
+	bill.paidmoney=recieved;
+	sysevents.emit('orderConfirmed', bill);
+	notifyMerchant(bill);
+}
 async function confirmOrder(orderid, recieved, extra) {
 	var testMode=false;
 	var {db}=await getDB(), _id=ObjectID(orderid);
 	var bill=await db.bills.findOne({_id});
 	if (!bill) throw 'no such orderid';
 
-	// const session=db.mongoClient.startSession(), 
-	// 	opt={
-	// 		readConcern: { level: 'majority' },
-	// 		writeConcern: { w: 'majority' }
-	// 	}
-	async function getItDone() {
-		var {value:r}=await db.bills.findOneAndUpdate({_id, used:{$ne:true}}, {$set:{used:true, status:'通知商户', paidmoney:recieved, lasttime:new Date(), ...extra}})
-		if (!r) throw ('used order');
-		// bill.paidmoney=received;
-		// get
-		// if (r.shareholders) {
-		// 	await db.balance.bulkWrite(
-		// 		r.shareholders.map(holder=>{
-		// 			var inc={money:received*holder.share, provider:r.provider, order:{...r}, time:new Date()};
-		// 			return {insertOne:inc}
-		// 		})
-		// 		, {session}
-		// 	);
-		// } else {
-		// 	var inc={money:received*holder.share, provider:r.provider, order:{...r}, time:new Date()};
-		// 	await db.balance.insertOne(inc, {session});
-		// }
-	}
-	// await session.withTransaction(getItDone, opt);
-	// session.endSession();
-	await getItDone();
+	var {value:r}=await db.bills.findOneAndUpdate({_id, used:{$ne:true}}, {$set:{used:true, notify_status:'通知商户', status:'PAID', paidmoney:recieved, lasttime:new Date(), ...extra}})
+	if (!r) throw ('used order');
 	bill.paidmoney=recieved;
 	sysevents.emit('orderConfirmed', bill);
 	notifyMerchant(bill);
-		// var shares=[];
-		// // shares.push((money*(r[0].share||0.985)).toFixed(2));
-		// function getParent(user, cb) {
-		//     db.users.findOne({_id:user.parent}, (err, r) =>{
-		//         if (err) return cb(err);
-		//         if (!r) return cb('no such user');
-		//         cb(null, r);
-		//     })
-		// }
-		// var findkey={};
-		// if (r.userid) findkey._id=r.userid;
-		// else if (r.merchantid) findkey.merchantid=r.merchantid;
-		// db.users.findOne(findkey)
-		// .then(function (user) {
-		//     return new Promise((resolve, reject)=>{
-		//         if (!user) return reject('no such merchant');
-		//         (function getShare(user, cb) {
-		//             shares.push({m:Number((money*(user.share||1)).toFixed(2)), user:user});
-		//             if (!user.parent) return cb();
-		//             getParent(user, function(err, parent) {
-		//                 if (err || !parent) return cb();
-		//                 getShare(parent, cb);
-		//             })
-		//         })(user, resolve);
-		//     });
-		// })
-		// .then(()=>{
-		//     var last=0;
-		//     var upds=[];
-		//     for (var i=0; i<shares.length; i++) {
-		//         var ele=shares[i];
-		//         var inc={};
-		//         var delta=Number((ele.m-last).toFixed(2));
-		//         if (delta<0) {
-		//             sysnotifier.add(`${ele.user.name||ele.user._id}的分成小于他的下级，请修改`);
-		//             shares.splice(i);
-		//             break;
-		//         }
-		//         inc[`in.${provider.name||provider}`]=Decimal128.fromString(''+delta);
-		//         inc.profit=Decimal128.fromString(''+delta);
-		//         inc.daily=Decimal128.fromString(''+delta);
-		//         last+=delta;
-		//         upds.push({updateOne:{filter:{_id:ele.user._id}, update:{$inc:inc}}});
-		//     }
-		//     db.users.bulkWrite(upds, {ordered:false});
-		//     var now=new Date();
-		//     var firstOne=true;
-		//     db.balance.insertMany(shares.map((ele=>{
-		//         var r={user:ele.user, delta:ele.m, orderid:orderid, desc:firstOne?'充值收入':'充值分账', t:now}
-		//         firstOne=false;
-		//         return r;
-		//     })))
-		//     updateWithLog('system', Number((net-shares[shares.length-1].m).toFixed(2)), '充值利润', orderid,provider);
-		// })
-		// .catch((e)=>{
-		//     console.log(e);
-		// });
-
-		// // async.parallel([
-		// //     db.users.update.bind(db.users, {merchantid:r[0].merchantid}, {$inc:{total:delta}}, {w:1}),
-		// //     db.stat.update.bind(db.stat, {_id:r[0].merchantid}, {$inc:{incoming:r[0].paidmoney, profit:r[0].paidmoney-delta}, $set:{provider:r.provider}}, {upsert:true, w:1})
-		// // ], (err)=>{
-		// //     notifySellSystem(r[0]);
-		// // })    
-		// var upd={status:'已支付', paidmoney:money, net:net, lasttime:new Date()};
-		// db.bills.update({_id:ObjectID(orderid)}, {$set:decimalfy(upd)}, {w:1}, function(_e) {
-		//     if (_e || err) return console.error(_e||err);
-		//     notifyMerchant(r);
-		//     // callback();
-		// })
 }
 function merSign(merchantData, o) {
 	if (o.sign) delete o.sign;
@@ -222,18 +142,18 @@ async function notifyMerchant(orderdata) {
 		} catch(e) {}
 		if (ret && ret.err) throw ret.err;
 		retryNotifyList.delete(orderdata._id);
-		db.bills.updateOne({_id:orderdata._id}, {$set:{status:'COMPLETED', lasttime:new Date(), merchant_return:body}});
+		db.bills.updateOne({_id:orderdata._id}, {$set:{status:'COMPLETED', lasttime:new Date(), merchant_return:body}, $unset:{notify_status:1}});
 	} catch (err) {
 		var rn=retryNotifyList.get(orderdata._id);
 		if (!rn) {
 			rn=orderdata;
 			rn.retrytimes=1;
 			retryNotifyList.set(orderdata._id, rn);
-			db.bills.updateOne({_id:orderdata._id}, {$set:{lasttime:new Date(), status:'通知商户', lasterr:normalizeError(err), merchant_return:body}});
+			db.bills.updateOne({_id:orderdata._id}, {$set:{lasttime:new Date(), notify_status:'通知商户', lasterr:normalizeError(err), merchant_return:body}});
 		}
 		else {
 			rn.retrytimes++;
-			db.bills.updateOne({_id:orderdata._id}, {$set:{lasttime:new Date(), status:'通知失败', lasterr:normalizeError(err), merchant_return:body}});
+			db.bills.updateOne({_id:orderdata._id}, {$set:{lasttime:new Date(), notify_status:'通知失败', lasterr:normalizeError(err), merchant_return:body}});
 			if (rn.retrytimes>5) {
 				retryNotifyList.delete(orderdata._id);
 			}
@@ -243,7 +163,7 @@ async function notifyMerchant(orderdata) {
 var retryNotifyList=new Map();
 (function() {
 	getDB((err, db)=>{
-		db.bills.find({status:'通知商户'}).toArray((err, r)=>{
+		db.bills.find({notify_status:'通知商户'}).toArray((err, r)=>{
 			if (err) return;
 			for (var i=0; i<r.length; i++) {
 				retryNotifyList.set(r[i]._id, r[i]);

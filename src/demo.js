@@ -37,7 +37,11 @@ const Go=({providers, users})=>{
         var apiUrl=window.location.origin+'/';
         if (window.location.search) {
             var {server}=Qs.parse(window.location.search.slice(1));
-            if (server) apiUrl=url.format({protocol:window.location.protocol, host:server})+'/';
+            if (server) {
+                var lastChar=server.charAt(server.length-1);
+                if (lastChar=='/' ||lastChar=='\\') server=server.slice(0, -1);
+                apiUrl=url.format({protocol:window.location.protocol, host:server})+'/';
+            }
         }
         var now=new Date();
         var params={

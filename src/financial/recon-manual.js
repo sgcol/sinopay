@@ -60,7 +60,11 @@ const UploadDialogToolbar =(props)=>{
 							return logout();
 						}
 						if (message) {
-							if (Array.isArray(message)) return history.push({pathname:'/refill-bills', state:{bills:message, provider:formData.provider}})//return setErr(message); return notify(`Orders ${message.map(item=>item.orderId).join(',')} are not exists, add them in bills first`, 'warning')
+							if (Array.isArray(message)) {
+								if (message.findIndex(v=>v.err=='orderId not exists')>=0) return history.push({pathname:'/refill-bills', state:{bills:message, provider:formData.provider}})//return setErr(message); return notify(`Orders ${message.map(item=>item.orderId).join(',')} are not exists, add them in bills first`, 'warning')
+								var msg=message.find(v=>v.err!='orderId not exists');
+								if (msg) return notify(msg.err, 'warning');
+							}
 							return notify(message.toString(), 'warning');
 						}
 					})
@@ -201,7 +205,7 @@ const ReconList = (props) => {
 	
 	if (!providers) return <Loading />
 
-	return (<List {...props} resource="bills" aside={<FilterSidebar providers={providers} {...props}/>} filterDefaultValues={{unsettled:true}} actions={<ReconActions providers={providers} {...props}/>} bulkActionButtons={<PostBulkActionButtons {...props} />} exporter={false}  title='人工对账' sort={{ field: 'time', order: 'DESC' }}>
+	return (<List {...props} resource="recon" aside={<FilterSidebar providers={providers} {...props}/>} filterDefaultValues={{unsettled:true}} actions={<ReconActions providers={providers} {...props}/>} bulkActionButtons={<PostBulkActionButtons {...props} />} exporter={false}  title='人工对账' sort={{ field: 'time', order: 'DESC' }}>
 		<ExtendedDatagrid>
 			<TextField source="id"/>
 			<TextField source="merchantName" label="商户"/>

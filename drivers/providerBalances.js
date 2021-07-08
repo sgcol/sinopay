@@ -3,6 +3,7 @@ const {objectId}=require('./dataDrivers.js')
 	, getDB =require('../db.js')
 	, {notifyMerchant}=require('../order.js')
 	, {dedecimal, isValidNumber} =require('../etc.js')
+	, {set:_set} =require('object-path')
 
 const idChanger=objectId;
 module.exports={
@@ -40,8 +41,19 @@ module.exports={
 		if (!aclgte(role, 'manager')) {
 			throw 'no privilege to access'
 		}
-		var rows=await db.outstandingAccounts.aggregate([{$match:filters}, {$group:{_id:'$account', balance:{$sum:'$balance'}, receivable:{$sum:'$receivable'}}}]).toArray();
-		dedecimal(rows);
+		var [_b, _r] =await Promise.all([
+			db.outstandingAccounts.aggregate([{$match:{...filters, balance:{$ne:null}}}, {$group:{_id:'$account', check:{$max:'$_id'}}}, {$lookup:{from:'outstandingAccounts', localField:'check', foreignField:'_id', as:'data'}}]).toArray(),
+			db.outstandingAccounts.aggregate([{$match:{...filters, receivable:{$ne:null}}}, {$group:{_id:'$account', check:{$max:'$_id'}}}, {$lookup:{from:'outstandingAccounts', localField:'check', foreignField:'_id', as:'data'}}]).toArray(),
+		])
+		var r={};
+		_b.forEach(v=>_set(r, [v.data[0].account, 'balance'], v.data[0].balance));
+		_r.forEach(v=>_set(r, [v.data[0].account, 'receivable'], v.data[0].receivable));
+
+		var rows=[];
+		for (var k in r) {
+			rows.push({_id:k, ...r[k]});
+		} 
+
 		return {rows, total:rows.length};
 	},
 }

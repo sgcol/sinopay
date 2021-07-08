@@ -77,6 +77,7 @@ module.exports={
 				var order=params[i];
 				order._id=idChanger(order._id);
 				order.time=new Date(order.time);
+				order.used=true;
 			}
 			var {insertedCount} =await db.bills.insertMany(params, {ordered:false, writeConcern:{w:1}});
 			return {insertedCount};

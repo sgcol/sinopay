@@ -1,5 +1,5 @@
 var external_provider ={}, providerNameMap={}, processed={};
-const path=require('path'), argv=require('yargs').argv;
+const path=require('path'), argv=require('yargs').argv, {providers}=require('../config');
 var tt = require('gy-module-loader')(path.join(__dirname, './*.pd.js'), function () {
 	var keys = Object.keys(tt);
 	for (var i = 0; i < keys.length; i++) {
@@ -7,6 +7,11 @@ var tt = require('gy-module-loader')(path.join(__dirname, './*.pd.js'), function
 		prd.internal_name=path.basename(keys[i], '.pd.js')
 		if (processed[prd.internal_name]) continue;
 		processed[prd.internal_name]=prd;
+
+		if (providers.indexOf(prd.internal_name)<0) {
+			console.log((path.basename(keys[i])+' is not selected provider, abandoned').yellow);
+			continue;
+		};
 
 		if (prd.debugMode && process.env.NODE_ENV=='production') {
 			console.log((path.basename(keys[i])+' is a debugMode provider, abandoned').yellow);

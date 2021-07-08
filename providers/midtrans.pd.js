@@ -92,7 +92,7 @@ var forwardOrder =async function(params, callback) {
 		snap.httpClient.http_client.defaults.headers.common['X-Override-Notification'] = params._host+'pvd/midtrans/done';
  
 		var transaction =await snap.createTransaction(parameter);
-		updateOrder(params.orderId, {status:'待支付', lasttime:new Date(), midtrans_ret:transaction});
+		updateOrder(params.orderId, {status:'待支付', currency:'IDR', lasttime:new Date(), midtrans_ret:transaction});
 		var ret={url:transaction.redirect_url};
 		ret.pay_type=params.type;
 		return callback(null, ret);

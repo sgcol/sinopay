@@ -17,14 +17,17 @@ function guessId(id) {
     }
 }
 
-(async function order_received() {
+async function order_received() {
 	var {db}=await getDB();
 	db_event.when('bills', 'update', async (rec)=>{
 		if (rec.updateDescription && rec.updateDescription.updatedFields && rec.updateDescription.updatedFields.used===true && !rec.updateDescription.updatedFields.hasOwnProperty('refilled')) {
 			console.log(rec.updateDescription.updatedFields);
-			var {used, userid:merchantid, money, provider, paidmoney, _id, time, rec_id, paymentMethod, status, commission=0}=rec.fullDocument;
+			var {used, userid:merchantid, money, provider, paidmoney, _id, time, rec_id=new ObjectId(), paymentMethod, payment={}, status, commission=0}=rec.fullDocument;
 			var now=time;
 			paidmoney=paidmoney||money;
+			var {mdr, fix_fee}=_get(payment, ['disbursement'], {mdr:0, fix_fee:0});
+			var commission=Number((money*mdr+fix_fee).toFixed(2));
+
 			switch (paymentMethod) {
 				case 'disbursement':
 					// if (status=='FAILED') {
@@ -84,7 +87,61 @@ function guessId(id) {
 	// 		return true;
 	// 	}
 	// })
-})()
+}
+const eleIn0=(name, arr, defaultValue)=>{
+	if (!Array.isArray(arr) || arr.length==0) return defaultValue;
+	return arr[0][name]||defaultValue;
+}
+async function order_received2() {
+	var {db}=await getDB();
+	db_event.when('bills', 'update', async (rec)=>{
+		if (rec.updateDescription && rec.updateDescription.updatedFields && rec.updateDescription.updatedFields.used===true && !rec.updateDescription.updatedFields.hasOwnProperty('refilled')) {
+			console.log(rec.updateDescription.updatedFields);
+			var {used, userid:merchantid, money, provider, paidmoney, _id, time, rec_id, paymentMethod, status, commission=0}=rec.fullDocument;
+			var now=time;
+			paidmoney=paidmoney||money;
+			switch (paymentMethod) {
+				case 'disbursement':
+					// if (status=='FAILED') {
+					// 	// refund, commission will be deduct anyway?
+					// 	db.accounts.insertOne({account:merchantid, time:now, refund:true, ref_id:_id, op_id:rec_id, balance:num2dec(money), payable:num2dec(-money)});
+					// } else if (status=='INSUFFICIENT_BALANCE') {
+					if (status!=='COMPLETED') {
+						commission=dec2num(commission);
+						db.accounts.insertOne({account:merchantid, time:now, refund:true, ref_id:_id, op_id:rec_id, balance:num2dec(money+commission), payable:num2dec(-money), commission:num2dec(-commission)});
+					}
+				break;
+				default:
+					var session=db.mongoClient.startSession();
+					try {
+						await session.withTransaction(async ()=>{
+							var rec_id=new ObjectId();
+							var op2={account:provider, amount:paidmoney, type:'recharge', time:now, ref_id:_id, op_id:rec_id};
+							await db.locks.findOneAndUpdate({_id:'balances.receivable.'+provider}, {$set:{lock:{account:provider, pseudoRandom: ObjectId() }}}, {session});
+							var receivable=eleIn0('receivable', await db.balances.find({account:provider, receivable:{$ne:null}}).sort({_id:-1}).limit(1).toArray(), 0);
+							op2.receivable=receivable+paidmoney;
+							await db.balances.insertOne(op2,{session});
+							await db.locks.findOneAndUpdate({_id:'balances.receivable.'+merchantid}, {$set:{lock:{account:merchantid, pseudoRandom: ObjectId() }}}, {session});
+							receivable=eleIn0('receivable', await db.balances.find({account:merchantid, receivable:{$ne:null}}).sort({_id:-1}).limit(1).toArray(), 0);
+							op2.receivable=receivable+paidmoney;
+							await db.balances.insertOne({...op2, account:merchantid}, {session});
+							await db.bills.updateOne({_id:_id}, {$set:{rec_id}}, {session});
+						}, {
+							readPreference: 'primary',
+							readConcern: { level: 'local' },
+							writeConcern: { w: 'majority' }
+						});
+					} finally {
+						await session.endSession();
+					}
+				break;
+			}
+			return true;
+		}
+	})
+}
+
+order_received2();
 
 async function handle_profit() {
 	var {db}=await getDB();
@@ -258,9 +315,7 @@ async function handleReconciliation(reconContent, providerName) {
 					var u=await getUser(merchantid);
 					paymentParams=_get(u, ['paymentMethod', paymentMethod], {mdr:u.mdr, fix_fee:u.fix_fee});
 				}
-				var {mdr, fix_fee}=paymentParams||{};
-				if (!mdr) mdr=1-share;
-				if (!fix_fee) fix_fee=0;
+				var {mdr=1-share, fix_fee=0}=paymentParams||{};
 				var sys_commission=Number((money*mdr).toFixed(2))+fix_fee;
 				if (money<sys_commission) {
 					sys_commission=fee;
@@ -276,10 +331,10 @@ async function handleReconciliation(reconContent, providerName) {
 			break;
 		}
 	}
-	for (var merchantid in accChg) {
-		var plist=accChg[merchantid];
-		for (var payment in plist) {
-			var {received, commission, profit, fee, transactionNum}=plist[payment];
+	for (let merchantid in accChg) {
+		let plist=accChg[merchantid];
+		for (let payment in plist) {
+			let {received, commission, profit, fee, transactionNum}=plist[payment];
 			accountsUpds.push({updateOne:{
 				filter:{account:merchantid, paymentMethod:payment, recon_id},
 				update:{$set:decimalfy({receivable:-received, balance:received-commission, commission, fee, transactionNum, provider:providerName, time:recon_time})},

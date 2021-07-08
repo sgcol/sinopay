@@ -78,7 +78,7 @@ const Save=({history, bills, users:userArray, provider, ...rest})=>{
 			var {orderId:_id, money, time, paymentMethod, originData}=bill;
 			var userid=values['order'+_id];
 			if (!userid) return notify('all the owner must be specified');
-			if (userid==='system') return {_id, userid, paymentMethod, time};
+			if (userid==='system') return {_id, money, currency:'IDR', userid, paymentMethod, provider, time};
 			else {
 				var {share, paymentMethod:payment, name:merchantName}=users[userid];
 				return {_id, money, userid, merchantName, share, provider, payment, paymentMethod, currency:'IDR', time};
@@ -139,8 +139,8 @@ const RefillBills=(props)=>{
 	var userList={
 		'recharge':merchants,
 		'disbursment':merchants.concat(agents),
-		'withdrawal':[{id:'system', name:'system'}].concat(agents),
-		'topup':[{id:'system', name:'system'}].concat(agents),
+		'withdrawal':[{id:'system', name:'system'}].concat(agents).concat(merchants),
+		'topup':[{id:'system', name:'system'}].concat(agents).concat(merchants),
 	}
 
 	return (<Card>

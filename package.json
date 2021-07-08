@@ -20,6 +20,7 @@
     "gy-easy-mongo": "^0.6.0",
     "gy-module-loader": "^1.0.4",
     "httpf": "0.0.9",
+    "ini": "^2.0.0",
     "ip6addr": "^0.2.3",
     "jszip": "^3.5.0",
     "md5": "^2.3.0",

@@ -1,1 +1,1 @@
-module.exports=require('./basic.js');
+module.exports=require('./ver2.js');

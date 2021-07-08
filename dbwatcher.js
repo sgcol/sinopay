@@ -29,3 +29,7 @@ exports.when=function(collectionName, op, handler) {
         });
     })();
 }
+
+if (module==require.main) {
+    exports.when('bills', console.log);
+}
