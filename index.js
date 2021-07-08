@@ -23,6 +23,8 @@ require('./financial_affairs');
 
 const app = new express()
 
+app.set('trust proxy', true);
+
 var getProviders = require('./providers').getProvider;
 
 if (argv.debugout) {
