@@ -63,17 +63,16 @@ var forwardOrder =async function(params, callback) {
 		if (err) throw err;
 		return r;
 	}
-    var ret={url:url.format({
-        pathname:url.resolve(params._host, '../../pvd/testcase/portal'),
-        query:{
-            orderId:params.orderId,
-            money:params.money,
-            notify_url:url.resolve(params._host, '../../pvd/testcase/done'),
-            return_url:params.return_url,
-            currency:params.currency
-        }
-    })};
-    ret.pay_type=params.type;
+    var ret={
+        url:url.resolve(params._host, '../../pvd/testcase/portal')+'?'+new URLSearchParams({
+                orderId:params.orderId,
+                money:params.money,
+                notify_url:url.resolve(params._host, '../../pvd/testcase/done'),
+                return_url:params.return_url,
+                currency:params.currency
+            }).toString(),
+        pay_type:params.type
+    };
     return callback(null, ret);
 }
 exports.forwardOrder=forwardOrder;
