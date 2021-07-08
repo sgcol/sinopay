@@ -6,5 +6,5 @@ else {
     var {REACT_APP_CFG}=ini.parse(fs.readFileSync(path.join(__dirname, '../.env'), 'utf-8'));
     module.exports=require(`./${REACT_APP_CFG}.js`)
 }
-
+  
 // export * from "./indonesia.cfg.js"
