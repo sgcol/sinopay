@@ -1,7 +1,7 @@
 module.exports={
     locale:'ID',
     lanuage:'en',
-    providers:['xendit', 'midtrans', 'espay'],
+    providers:['xendit', 'midtrans', 'espay', 'testcase'],
     defaultShare:{
         creditCard:{
             mdr:0.03, fix_fee:5000
