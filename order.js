@@ -104,8 +104,9 @@ async function confirmOrder(orderid, recieved, extra) {
 	var {value:r}=await db.bills.findOneAndUpdate({_id, used:{$ne:true}}, {$set:{used:true, notify_status:'通知商户', status:'PAID', paidmoney:recieved, lasttime:new Date(), ...extra}})
 	if (!r) throw ('used order');
 	bill.paidmoney=recieved;
-	sysevents.emit('orderConfirmed', r);
-	notifyMerchant(r);
+	bill.status='PAID';
+	sysevents.emit('orderConfirmed', bill);
+	notifyMerchant(bill);
 }
 function merSign(merchantData, o) {
 	if (o.sign) delete o.sign;
