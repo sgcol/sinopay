@@ -28,7 +28,7 @@ app.set('trust proxy', true);
 var getProviders = require('./providers').getProvider;
 
 if (argv.debugout) {
-	app.use(function (req, res, next) {
+	app.use(bodyParse.json(), function (req, res, next) {
 		debugout('access', req.url, req.body||'');
 		next();
 	});
