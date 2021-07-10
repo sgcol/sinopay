@@ -12,7 +12,7 @@ import {DateTimeField} from './extends/fields';
 import { useDispatch } from 'react-redux';
 import { refreshView } from 'ra-core';
 import {fetchApi} from './data-provider';
-import {ExtendedDatagrid} from './extends';
+import {ExtendedDatagrid, StatusFiled} from './extends';
 import get from 'lodash/get';
 
 export const BillShow =props=> (
@@ -103,7 +103,7 @@ export const BillList = ({permissions, ...props}) => {
 				<NumberField source="money" footerSource="money"/>
 				<TextField source="currency"/>
 				<DateTimeField source="time" label="创建时间"/>
-				<TextField source="status" />
+				<StatusFiled source="status" />
 				<OptionButtons permissions={permissions} alwaysOn={true}/>
 			</ExtendedDatagrid>
 		</List>
