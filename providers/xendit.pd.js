@@ -4,7 +4,8 @@ const url = require('url')
 , getDB=require('../db.js')
 , {ObjectId} =require('mongodb')
 , {confirmOrder, updateOrder, getOrderDetail} =require('../order.js')
-, {dec2num, dedecaimal}=require('../etc.js')
+, {dec2num, dedecaimal, errfy}=require('../etc.js')
+, {get:_get} =require('object-path')
 , httpf =require('httpf')
 , fetch=require('node-fetch')
 , path =require('path')
@@ -126,7 +127,11 @@ exports.getBalance=async function() {
         xendit_b.getBalance({accountType:Balance.AccountType.Cash}),
         xendit_b.getBalance({accountType:Balance.AccountType.Holding})
     ]);
-    return {err:vb.reason||vr.reason, balance:vb.value.balance||0, receivable:vr.value.balance};
+    var err=vb.reason||vr.reason;
+    if (err) {
+        return {err:errfy(err)}
+    }
+    return {balance:_get(vb, ['value', 'balance'], 0), receivable:_get(vr, ['value','balance'], 0)};
 }
 
 const supportedBanks={
